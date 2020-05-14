@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>openvpn-admin</title>
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+  </head>
+  <body>
+    <div id="app" @click.left.stop="u_ctx_hide">
+
+      <div>
+        <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      </div>
+
+      <div class="dropdown-menu dropdown-custom" :style="uCtxStyle" v-show="u.ctxVisible">
+        <button class="dropdown-item" type="button" :data-name="name" :data-text="text" @click.left.stop="u_ctx_click" v-for="text, name in u.ctxMenuItems">{{text}}</button>
+      </div>
+
+      <table class="table table-bordered table-hover">
+        <thead class="thead-dark">
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Flag</th>
+            <th scope="col">Expiration date</th>
+            <th scope="col">Revocation date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in u.data" :data-name="row.Identity" :style="row.connection_status" @contextmenu.prevent="u_ctx_show">
+            <td>{{ row.Identity }}</td>
+            <td>{{ row.Flag }}</td>
+            <td>{{ row.ExpirationDate }}</td>
+            <td>{{ row.RevocationDate }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="modal-wrapper" v-if="u.modalNewUserVisible">
+          <div class="modal-new-user">
+            <input type="text" class="form-control el-square modal-new-user-el-margin" placeholder="User name [_a-zA-Z0-9\.-]" v-model="u.newUserName">
+            <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="create_user();u.modalNewUserVisible=false">Create</button>
+            <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="u.newUserName='';u.modalNewUserVisible=false">Cancel</button>
+          </div>
+      </div>
+
+      <div class="modal-wrapper" v-if="u.modalShowConfigVisible">
+          <div class="modal-show-config">
+            <div class="row">
+              <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-clipboard:copy="u.openvpnConfig">Copy</button>
+              <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="u.openvpnConfig='';u.modalShowConfigVisible=false">Cancel</button>
+            </div>
+            <div class="row">
+              <pre class="modal-show-config-txt-box modal-new-user-el-margin">{{ u.openvpnConfig }}</pre>
+            </div>
+          </div>
+      </div>
+
+    </div>
+    <script src="dist/build.js"></script>
+  </body>
+</html>
+<!-- n['flag'], n['expiration_date'], n['revocation_date'], n['serial_number'], n['filename'], n['distinguished_name'] -->

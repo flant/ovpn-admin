@@ -1,0 +1,65 @@
+html, body {
+  height: 100%;
+}
+
+body {
+  overflow-y: scroll;
+  font-size: 14px;
+  font-family: 'Roboto', sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-custom {
+  display: block;
+}
+
+.el-square {
+  border-radius: 0;
+}
+
+.modal-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  transition: opacity .3s ease;
+  z-index: 999;
+  position: fixed;
+  height: 100%;
+  width: 100%;
+  top: 0;
+  left: 0;
+  margin:  auto 0;
+}
+
+.modal-new-user {
+  display: flex;
+  flex-direction: row;
+  background-color: #eaeaea;
+  padding: 2rem;
+}
+
+.modal-new-user-el-margin {
+  margin-left: 0.1rem;
+  margin-right: 0.1rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.1rem;
+}
+
+.modal-show-config {
+  display: flex;
+  flex-direction: column;
+  background-color: #eaeaea;
+  padding: 2rem;
+}
+
+.modal-show-config-txt-box {
+  /* width: 50rem; */
+  max-height: 30rem;
+  background-color: #ffffff;
+  padding: 1rem;
+}
