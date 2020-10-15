@@ -1,0 +1,109 @@
+project: openvpn-web-ui
+configVersion: 1
+deploy:
+  helmRelease: "[[ project ]]-[[ env ]]"
+  namespace: "[[ project ]]-[[ env ]]"
+
+---
+artifact: backend-builder
+from: golang:1.14.2-alpine3.11
+git:
+ - add: /
+   to: /app
+   stageDependencies:
+     install:
+        - "*.go"
+   excludePaths:
+     - .helm
+     - .werf
+     - frontend
+     - werf.yaml
+     - Dockerfile
+ansible:
+  install:
+    - name: Install packages
+      apk:
+        name:
+          - build-base
+          - gcc
+    - name: Build backend
+      command: go build -ldflags='-extldflags "-static" -s -w' -o openvpn-ui
+      environment:
+        CGO_ENABLED: 0
+        GOOS: linux
+        GOARCH: amd64
+      args:
+        chdir: /app
+
+---
+artifact: frontend-builder
+from: node:14.2-alpine3.11
+git:
+ - add: /frontend
+   to: /app
+   stageDependencies:
+     install:
+        - "**/*"
+   excludePaths:
+     - Dockerfile
+     - build.sh
+     - werf.yaml
+ansible:
+  setup:
+    - name: install deps
+      command: npm install
+      args:
+        chdir: /app
+    - name: Build app
+      command: npm run build
+      args:
+        chdir: /app
+
+---
+image: openvpn-admin
+from: alpine:3.11
+import:
+- artifact: backend-builder
+  add: /app/openvpn-ui
+  to: /usr/bin/openvpn-ui
+  before: setup
+- artifact: frontend-builder
+  add: /app/static
+  to: /app/static
+  before: setup
+ansible:
+  install:
+    - name: Install packages
+      apk:
+        name:
+          - easy-rsa
+          - bash
+    - name: Create symbolic link for easy-rsa
+      file:
+        src: "/usr/share/easy-rsa/easyrsa"
+        dest: "/usr/local/bin/easyrsa"
+        state: link
+
+---
+image: openvpn
+from: alpine:3.11
+git:
+ - add: /.werffiles/configure.sh
+   to: /etc/openvpn/setup/configure.sh
+   stageDependencies:
+     install:
+        - "*"
+ansible:
+  install:
+    - name: Install packages
+      apk:
+        name:
+          - openvpn
+          - easy-rsa
+    - name: Create symbolic link for easy-rsa
+      file:
+        src: "/usr/share/easy-rsa/easyrsa"
+        dest: "/usr/local/bin/easyrsa"
+        state: link
+
+

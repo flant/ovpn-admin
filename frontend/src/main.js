@@ -34,7 +34,7 @@ new Vue({
       ctxTop: '0',
       ctxLeft: '0',
       ctxVisible: false,
-      ctxMenuItems: { 'u-revoke': 'Revoke', 'u-unrevoke': 'Unrevoke', 'u-show-config': 'Show config'},
+      ctxMenuItems: { 'u-revoke': 'Revoke', 'u-unrevoke': 'Unrevoke', 'u-show-config': 'Show config', 'u-edit-ccd': "Edit routes"},
       columns: [],
       data: {},
       name: '',
@@ -81,6 +81,15 @@ new Vue({
         _this.u.openvpnConfig = response.data;
       });
     })
+    this.$root.$on('u-edit-ccd', function () {
+      this.u.modalShowCcdVisible = true;
+      var data = new URLSearchParams();
+      data.append('username', _this.u.name);
+      axios.request(axios_cfg('api/user/ccd/list', data, 'form'))
+      .then(function(response) {
+        _this.u.ccds = response.data;
+      });
+    })
   },
   computed: {
     uCtxStyle: function () {
@@ -114,11 +123,29 @@ new Vue({
         _this.u.data = response.data
       });
     },
+    u_get_ccd: function() {
+      var _this = this;
+      axios.request(axios_cfg('api/user/ccd'))
+      .then(function(response) {
+        _this.u.data = response.data
+      });
+    },
     create_user: function() {
       var _this = this;
       var data = new URLSearchParams();
       data.append('username', this.u.newUserName);
       axios.request(axios_cfg('api/user/create', data, 'form'))
+      .then(function(response) {
+        console.log(response.data);
+        _this.u_get_data();
+        _this.u.newUserName = '';
+      });
+    },
+    ccd_apply: function() {
+      var _this = this;
+      var data = new URLSearchParams();
+      data.append('username', this.u.newUserName);
+      axios.request(axios_cfg('api/user/ccd/apply', data, 'form'))
       .then(function(response) {
         console.log(response.data);
         _this.u_get_data();

@@ -57,6 +57,44 @@
           </div>
       </div>
 
+      <div class="modal-wrapper" v-if="u.modalShowCcdVisible">
+          <div class="modal-ccd-config">
+            <div class="row">
+              <table class="table table-bordered table-hover">
+                  <thead>
+                  <tr>
+                    <th scope="col">Address</th>
+                    <th scope="col">Mask</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(route, index) in u.ccd">
+                    <td>{{ route.addr }}</td>
+                    <td>{{ route.mask }}</td>
+                    <td>{{ route.desc }}</td>
+                    <td>
+                      <!-- button type="button" class="btn btn-primary btn-sm el-square" v-on:click.stop="ccd_edit()">Edit</button -->
+                      <button type="button" class="btn btn-primary btn-sm el-square" v-on:click.stop="ccd.splice(index, 1)">Delete</button>
+                    </td>
+                  </tr>>
+                </tbody>
+              </table>
+            </div>
+            <div class="row">
+              <input type="text" v-model="route.addr" />
+              <input type="text" v-model="route.mask" />
+              <input type="text" v-model="route.desc" />
+              <button type="button" class="btn btn-success el-square" v-on:click.stop="ccd.push(route)">Add new route</button>
+            </div>
+            <div class="row">
+              <button type="button" class="btn btn-success el-square" v-on:click.stop="ccd_apply()">Save</button>
+              <button type="button" class="btn btn-danger el-square" v-on:click.stop="u.ccd=[];u.modalShowCcdVisible=false">Close</button>
+            </div>
+          </div>
+      </div>
+
     </div>
     <script src="dist/build.js"></script>
   </body>

@@ -1,0 +1,23 @@
+version: '3'
+
+volumes:
+  ovpn_data:
+  ovpn_config:
+
+services:
+  openvpn:
+    image: openvpn:local
+    command: /etc/openvpn/setup/configure.sh
+    ports:
+      - 1194:1194
+    volumes:
+      - ovpn_data:/etc/openvpn/easyrsa
+  openvpn-admin:
+    build:
+      context: .
+    image: openvpn-admin:local
+    command: /app/openvpn-ui
+    ports:
+      - 8080:8080
+    volumes:
+      - ovpn_data:/mnt/easyrsa

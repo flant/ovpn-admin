@@ -7,7 +7,7 @@ fi
 cd easyrsa
 
 if [ ! -f easyrsa ]; then
-  curl -sL https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.6/EasyRSA-unix-v3.0.6.tgz | tar -xzv --strip-components=1 -C .
+  curl -sL https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.8/EasyRSA-3.0.8.tgz | tar -xzv --strip-components=1 -C .
 fi
 
 if [ -d pki ]; then
