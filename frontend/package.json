@@ -1,7 +1,7 @@
 {
-  "name": "openvpn-easyrsa-web-ui",
-  "description": "A Vue.js project",
-  "version": "1.0.0",
+  "name": "openvpn-admin",
+  "description": "Vue.js admin ui for openvpn and easyrsa",
+  "version": "1.0.1a",
   "author": "vitaliy.snurnitsin@gmail.com",
   "license": "MIT",
   "private": true,
@@ -10,9 +10,10 @@
     "build": "cross-env NODE_ENV=production webpack --progress --hide-modules"
   },
   "dependencies": {
-    "axios": "^0.18.0",
-    "vue": "^2.5.17",
-    "vue-clipboard2": "^0.2.1"
+    "axios": "^0.19.2",
+    "vue": "^2.6.12",
+    "vue-clipboard2": "^0.2.1",
+    "vue-good-table": "^2.21.1"
   },
   "browserslist": [
     "> 1%",
@@ -20,18 +21,23 @@
     "not ie <= 8"
   ],
   "devDependencies": {
-    "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.5",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-stage-3": "^6.24.1",
-    "cross-env": "^5.2.0",
-    "css-loader": "^0.28.7",
-    "file-loader": "^1.1.4",
-    "node-sass": "^4.9.3",
-    "sass-loader": "^6.0.6",
-    "vue-loader": "^13.7.3",
-    "vue-template-compiler": "^2.5.17",
-    "webpack": "^3.12.0",
-    "webpack-dev-server": "^2.11.3"
+    "@babel/core": "^7.8.6",
+    "@babel/plugin-proposal-class-properties": "^7.0.0",
+    "@babel/plugin-proposal-json-strings": "^7.0.0",
+    "@babel/plugin-syntax-dynamic-import": "^7.0.0",
+    "@babel/plugin-syntax-import-meta": "^7.0.0",
+    "@babel/preset-env": "^7.0.0",
+    "babel-loader": "^8.0.0",
+    "cross-env": "^7.0.0",
+    "css-loader": "^3.4.2",
+    "file-loader": "^5.1.0",
+    "node-sass": "^4.13.1",
+    "sass-loader": "^8.0.2",
+    "terser-webpack-plugin": "^2.3.5",
+    "vue-loader": "^15.9.0",
+    "vue-template-compiler": "^2.6.11",
+    "webpack": "^4.42.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.10.3"
   }
 }

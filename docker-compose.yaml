@@ -1,23 +1,26 @@
 version: '3'
 
-volumes:
-  ovpn_data:
-  ovpn_config:
-
 services:
   openvpn:
+    build:
+      context: .
+      dockerfile: Dockerfile.openvpn
     image: openvpn:local
     command: /etc/openvpn/setup/configure.sh
+    cap_add:
+      - NET_ADMIN
     ports:
       - 1194:1194
     volumes:
-      - ovpn_data:/etc/openvpn/easyrsa
+      - ./easyrsa:/etc/openvpn/easyrsa
+      - ./ccd:/etc/openvpn/ccd
   openvpn-admin:
     build:
       context: .
     image: openvpn-admin:local
-    command: /app/openvpn-ui
+    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --mgmt.host="openvpn"
     ports:
       - 8080:8080
     volumes:
-      - ovpn_data:/mnt/easyrsa
+      - ./easyrsa:/mnt/easyrsa
+      - ./ccd:/mnt/ccd

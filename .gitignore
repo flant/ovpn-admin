@@ -1,2 +1,6 @@
 easyrsa
+ccd
 openvpn-web-ui
+openvpn-ui
+openvpn-admin
+frontend/node_modules

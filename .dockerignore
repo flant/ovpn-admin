@@ -5,5 +5,10 @@ out
 gen
 
 
-./easyrsa
+easyrsa
+ccd
 werf.yaml
+frontend/node_modules
+openvpn-web-ui
+openvpn-ui
+openvpn-admin

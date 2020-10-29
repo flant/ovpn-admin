@@ -27,7 +27,7 @@ ansible:
           - build-base
           - gcc
     - name: Build backend
-      command: go build -ldflags='-extldflags "-static" -s -w' -o openvpn-ui
+      command: go build -ldflags='-extldflags "-static" -s -w' -o openvpn-admin
       environment:
         CGO_ENABLED: 0
         GOOS: linux
@@ -64,13 +64,24 @@ image: openvpn-admin
 from: alpine:3.11
 import:
 - artifact: backend-builder
-  add: /app/openvpn-ui
-  to: /usr/bin/openvpn-ui
+  add: /app/openvpn-admin
+  to: /usr/bin/openvpn-admin
   before: setup
 - artifact: frontend-builder
   add: /app/static
   to: /app/static
   before: setup
+git:
+ - add: /client.conf.tpl
+   to: /app/client.conf.tpl
+   stageDependencies:
+     setup:
+        - "*"
+ - add: /ccd.tpl
+   to: /app/ccd.tpl
+   stageDependencies:
+     setup:
+        - "*"
 ansible:
   install:
     - name: Install packages
@@ -88,8 +99,8 @@ ansible:
 image: openvpn
 from: alpine:3.11
 git:
- - add: /.werffiles/configure.sh
-   to: /etc/openvpn/setup/configure.sh
+ - add: /.werffiles/
+   to: /etc/openvpn/setup/
    stageDependencies:
      install:
         - "*"

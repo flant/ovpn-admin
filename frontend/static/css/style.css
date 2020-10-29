@@ -22,7 +22,7 @@ body {
 }
 
 .modal-wrapper {
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
   background-color: rgba(0, 0, 0, 0.5);
@@ -36,25 +36,16 @@ body {
   margin:  auto 0;
 }
 
-.modal-new-user {
-  display: flex;
-  flex-direction: row;
-  background-color: #eaeaea;
-  padding: 2rem;
+.static-address-label {
+   margin: 0.1em 1em 0.1em 0.1em;
 }
 
-.modal-new-user-el-margin {
-  margin-left: 0.1rem;
-  margin-right: 0.1rem;
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
+.modal-el-margin {
+  margin: 0.1rem;
 }
 
-.modal-show-config {
-  display: flex;
-  flex-direction: column;
-  background-color: #eaeaea;
-  padding: 2rem;
+.new-user-btn {
+  margin-right: 2rem;
 }
 
 .modal-show-config-txt-box {

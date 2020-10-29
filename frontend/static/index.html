@@ -1,102 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>openvpn-admin</title>
-    <link rel="stylesheet" href="css/normalize.css">
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/style.css">
-  </head>
-  <body>
-    <div id="app" @click.left.stop="u_ctx_hide">
+<head>
+  <meta charset="utf-8">
+  <title>openvpn-admin</title>
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
 
-      <div>
-        <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
-      </div>
+<!--  <div class="dropdown-menu dropdown-custom" :style="uCtxStyle" v-show="u.ctxVisible">-->
+<!--    <button class="dropdown-item" type="button" :data-name="name" :data-text="text" @click.left.stop="u_ctx_click" v-for="text, name in u.ctxMenuItems">{{text}}</button>-->
+<!--  </div>-->
 
-      <div class="dropdown-menu dropdown-custom" :style="uCtxStyle" v-show="u.ctxVisible">
-        <button class="dropdown-item" type="button" :data-name="name" :data-text="text" @click.left.stop="u_ctx_click" v-for="text, name in u.ctxMenuItems">{{text}}</button>
-      </div>
-
-      <table class="table table-bordered table-hover">
-        <thead class="thead-dark">
-          <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Flag</th>
-            <th scope="col">Expiration date</th>
-            <th scope="col">Revocation date</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in u.data" :data-name="row.Identity" :style="row.connection_status" @contextmenu.prevent="u_ctx_show">
-            <td>{{ row.Identity }}</td>
-            <td>{{ row.Flag }}</td>
-            <td>{{ row.ExpirationDate }}</td>
-            <td>{{ row.RevocationDate }}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="modal-wrapper" v-if="u.modalNewUserVisible">
-          <div class="modal-new-user">
-            <input type="text" class="form-control el-square modal-new-user-el-margin" placeholder="User name [_a-zA-Z0-9\.-]" v-model="u.newUserName">
-            <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="create_user();u.modalNewUserVisible=false">Create</button>
-            <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="u.newUserName='';u.modalNewUserVisible=false">Cancel</button>
-          </div>
-      </div>
-
-      <div class="modal-wrapper" v-if="u.modalShowConfigVisible">
-          <div class="modal-show-config">
-            <div class="row">
-              <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-clipboard:copy="u.openvpnConfig">Copy</button>
-              <button type="button" class="btn btn-success el-square modal-new-user-el-margin" v-on:click.stop="u.openvpnConfig='';u.modalShowConfigVisible=false">Cancel</button>
-            </div>
-            <div class="row">
-              <pre class="modal-show-config-txt-box modal-new-user-el-margin">{{ u.openvpnConfig }}</pre>
-            </div>
-          </div>
-      </div>
-
-      <div class="modal-wrapper" v-if="u.modalShowCcdVisible">
-          <div class="modal-ccd-config">
-            <div class="row">
-              <table class="table table-bordered table-hover">
-                  <thead>
-                  <tr>
-                    <th scope="col">Address</th>
-                    <th scope="col">Mask</th>
-                    <th scope="col">Description</th>
-                    <th scope="col">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(route, index) in u.ccd">
-                    <td>{{ route.addr }}</td>
-                    <td>{{ route.mask }}</td>
-                    <td>{{ route.desc }}</td>
-                    <td>
-                      <!-- button type="button" class="btn btn-primary btn-sm el-square" v-on:click.stop="ccd_edit()">Edit</button -->
-                      <button type="button" class="btn btn-primary btn-sm el-square" v-on:click.stop="ccd.splice(index, 1)">Delete</button>
-                    </td>
-                  </tr>>
-                </tbody>
-              </table>
-            </div>
-            <div class="row">
-              <input type="text" v-model="route.addr" />
-              <input type="text" v-model="route.mask" />
-              <input type="text" v-model="route.desc" />
-              <button type="button" class="btn btn-success el-square" v-on:click.stop="ccd.push(route)">Add new route</button>
-            </div>
-            <div class="row">
-              <button type="button" class="btn btn-success el-square" v-on:click.stop="ccd_apply()">Save</button>
-              <button type="button" class="btn btn-danger el-square" v-on:click.stop="u.ccd=[];u.modalShowCcdVisible=false">Close</button>
-            </div>
-          </div>
-      </div>
-
+<!--  <table class="table table-bordered table-hover">-->
+<!--    <thead class="thead-dark">-->
+<!--    <tr>-->
+<!--      <th scope="col">Name</th>-->
+<!--      <th scope="col">Account status</th>-->
+<!--      <th scope="col">Expiration date</th>-->
+<!--      <th scope="col">Revocation date</th>-->
+<!--&lt;!&ndash;      <th scope="col">Connection status</th>&ndash;&gt;-->
+<!--    </tr>-->
+<!--    </thead>-->
+<!--    <tbody>-->
+<!--    <tr v-for="row in u.data" :data-name="row.Identity" v-bind:style="row.ConnectionStatus" @contextmenu.prevent="u_ctx_show">-->
+<!--      <td>{{ row.Identity }}</td>-->
+<!--      <td>{{ row.AccountStatus }}</td>-->
+<!--      <td>{{ row.ExpirationDate }}</td>-->
+<!--      <td>{{ row.RevocationDate }}</td>-->
+<!--&lt;!&ndash;      <td>{{ row.ConnectionStatus }}</td>&ndash;&gt;-->
+<!--    </tr>-->
+<!--    </tbody>-->
+<!--  </table>-->
+  <vue-good-table
+    :columns="columns"
+    :rows="rows"
+    :line-numbers="true"
+    :row-style-class="rowStyleClassFn"
+    :search-options="{ enabled: true}" >
+    <div slot="table-actions">
+      <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
     </div>
-    <script src="dist/build.js"></script>
-  </body>
+    <div slot="emptystate">
+      This will show up when there are no rows
+    </div>
+    <template slot="table-row" slot-scope="props">
+      <span v-if="props.column.field == 'actions'">
+        <button
+          class="btn btn-sm btn-success el-square modal-el-margin"
+          type="button"
+          :title="action.label"
+          :data-username="props.row.Identity"
+          :data-name="action.name"
+          :data-text="action.label"
+          @click.left.stop="rowActionFn"
+          v-for="action in actions"
+          v-if="action.showWhenStatus == props.row.AccountStatus">
+          {{ action.label }}
+        </button>
+      </span>
+    </template>
+  </vue-good-table>
+
+<!--  <div class="d-flex justify-content-md-end">-->
+<!--    <button type="button" class="btn btn-sm btn-success el-square new-user-btn" v-on:click.stop="u.ctxVisible=false;u.modalNewUserVisible=true">Add user</button>-->
+<!--  </div>-->
+
+  <div class="modal-wrapper" v-if="u.modalNewUserVisible" v-bind:style="modalNewUserDisplay">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+        <div class="modal-header">
+          <h4>Add new user </h4>
+        </div>
+        <div class="modal-body">
+          <input type="text" class="form-control el-square modal-el-margin" placeholder="Username [_a-zA-Z0-9\.-]" v-model="u.newUserName">
+<!--          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword">-->
+        </div>
+
+        <div class="modal-footer justify-content-center" v-if="u.newUserCreateError.length > 0">
+          <div class="alert alert-danger" role="alert" >
+            {{ u.newUserCreateError }}
+          </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="create_user();">Create</button>
+            <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newUserName='';u.newUserPassword='nopass';u.modalNewUserVisible=false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-wrapper" v-if="u.modalShowConfigVisible" v-bind:style="modalShowConfigDisplay">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>ovpn config for {{ username }}</h4>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex">
+            <pre class="modal-show-config-txt-box">{{ u.openvpnConfig }}</pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="d-flex">
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-clipboard:copy="u.openvpnConfig">Copy </button>
+            <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.openvpnConfig='';u.modalShowConfigVisible=false">Cancel</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+  <div class="modal-wrapper" v-if="u.modalShowCcdVisible" v-bind:style="modalShowCcdDisplay">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="input-group">
+            <h4 class="static-address-label ">Client "{{ username }}" static address</h4>
+            <div class="input-group-prepend">
+              <div class="input-group-text">
+                <input id="enable-static" type="checkbox" onchange="document.getElementById('staticAddress').disabled=!this.checked;" v-bind:checked="!customAddressEnabled">
+              </div>
+            </div>
+            <input id="staticAddress" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressEnabled">
+          </div>
+
+        </div>
+        <div class="modal-body">
+          <div class="d-flex ">
+            <table class="table table-bordered table-hover">
+              <thead>
+                <tr>
+                  <th scope="col">Address</th>
+                  <th scope="col">Mask</th>
+                  <th scope="col">Description</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(customRoute, index) in u.ccd.CustomRoutes">
+                  <td>{{ customRoute.Address }}</td>
+                  <td>{{ customRoute.Mask }}</td>
+                  <td>{{ customRoute.Description }}</td>
+                  <td>
+                    <button type="button" class="btn btn-primary btn-sm el-square modal-el-margin" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
+                  </td>
+                </tr>
+                <tr>
+                  <td><input type="text" v-model="u.newRoute.Address"/></td>
+                  <td><input type="text" v-model="u.newRoute.Mask"/></td>
+                  <td><input type="text" v-model="u.newRoute.Description"/></td>
+                  <td>
+                    <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="u.ccd.CustomRoutes.push(u.newRoute);u.newRoute={};">Add</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-center" v-if="u.ccdApplyStatusMessage.length > 0">
+            <div class="alert" v-bind:class="ccdApplyStatusCssClass" role="alert">
+              {{ u.ccdApplyStatusMessage }}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="ccd_apply()">Save</button>
+            <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.ccd={Name:'',ClientAddress:'',CustomRoutes:[]};u.ccdApplyStatusMessage='';u.ccdApplyStatus='';u.modalShowCcdVisible=false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="dist/build.js"></script>
+</body>
 </html>
-<!-- n['flag'], n['expiration_date'], n['revocation_date'], n['serial_number'], n['filename'], n['distinguished_name'] -->
