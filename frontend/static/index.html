@@ -9,42 +9,20 @@
 </head>
 <body>
 <div id="app">
-
-<!--  <div class="dropdown-menu dropdown-custom" :style="uCtxStyle" v-show="u.ctxVisible">-->
-<!--    <button class="dropdown-item" type="button" :data-name="name" :data-text="text" @click.left.stop="u_ctx_click" v-for="text, name in u.ctxMenuItems">{{text}}</button>-->
-<!--  </div>-->
-
-<!--  <table class="table table-bordered table-hover">-->
-<!--    <thead class="thead-dark">-->
-<!--    <tr>-->
-<!--      <th scope="col">Name</th>-->
-<!--      <th scope="col">Account status</th>-->
-<!--      <th scope="col">Expiration date</th>-->
-<!--      <th scope="col">Revocation date</th>-->
-<!--&lt;!&ndash;      <th scope="col">Connection status</th>&ndash;&gt;-->
-<!--    </tr>-->
-<!--    </thead>-->
-<!--    <tbody>-->
-<!--    <tr v-for="row in u.data" :data-name="row.Identity" v-bind:style="row.ConnectionStatus" @contextmenu.prevent="u_ctx_show">-->
-<!--      <td>{{ row.Identity }}</td>-->
-<!--      <td>{{ row.AccountStatus }}</td>-->
-<!--      <td>{{ row.ExpirationDate }}</td>-->
-<!--      <td>{{ row.RevocationDate }}</td>-->
-<!--&lt;!&ndash;      <td>{{ row.ConnectionStatus }}</td>&ndash;&gt;-->
-<!--    </tr>-->
-<!--    </tbody>-->
-<!--  </table>-->
   <vue-good-table
     :columns="columns"
-    :rows="rows"
+    :rows="filteredRows"
     :line-numbers="true"
     :row-style-class="rowStyleClassFn"
     :search-options="{ enabled: true}" >
     <div slot="table-actions">
       <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hide_revoked=!filters.hide_revoked" v-show="filters.hide_revoked">Show revoked</button>
+      <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hide_revoked=!filters.hide_revoked" v-show="!filters.hide_revoked">Hide revoked</button>
     </div>
-    <div slot="emptystate">
-      This will show up when there are no rows
+    <div slot="emptystate" class="d-flex justify-content-center">
+      <h4>No users have been created yet.</h4>
+      <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
     </div>
     <template slot="table-row" slot-scope="props">
       <span v-if="props.column.field == 'actions'">

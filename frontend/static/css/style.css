@@ -44,6 +44,10 @@ body {
   margin: 0.1rem;
 }
 
+.connected-user {
+  background-color: rgba(162, 245, 169, 0.5);
+}
+
 .new-user-btn {
   margin-right: 2rem;
 }

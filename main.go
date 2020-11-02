@@ -373,17 +373,24 @@ func checkUserExist(username string) bool {
 
 func usersList() []openvpnClient {
 	users := []openvpnClient{}
+	activeClients := mgmtGetActiveClients()
+
 	for _, line := range indexTxtParser(fRead(*indexTxtPath)) {
 	    if line.Identity != "server" {
+	        ovpnClient := openvpnClient{Identity: line.Identity, ExpirationDate: indexTxtDateToHumanReadable(line.ExpirationDate)}
             switch {
                 case line.Flag == "V":
-                    users = append(users, openvpnClient{Identity: line.Identity, ExpirationDate: indexTxtDateToHumanReadable(line.ExpirationDate), AccountStatus: "Active"})
+                    ovpnClient.AccountStatus = "Active"
                 case line.Flag == "R":
-                    users = append(users, openvpnClient{Identity: line.Identity, RevocationDate: indexTxtDateToHumanReadable(line.RevocationDate), ExpirationDate: indexTxtDateToHumanReadable(line.ExpirationDate),  AccountStatus: "Revoked"})
+                    ovpnClient.AccountStatus = "Revoked"
+                    ovpnClient.RevocationDate = indexTxtDateToHumanReadable(line.RevocationDate)
                 case line.Flag == "E":
-                    users = append(users, openvpnClient{Identity: line.Identity, RevocationDate: indexTxtDateToHumanReadable(line.RevocationDate), ExpirationDate: indexTxtDateToHumanReadable(line.ExpirationDate),  AccountStatus: "Expired"})
-
+                    ovpnClient.AccountStatus = "Expired"
             }
+            if isUserConnected(line.Identity, activeClients) {
+                ovpnClient.ConnectionStatus = "Connected"
+            }
+            users = append(users, ovpnClient)
         }
 	}
 	return users
@@ -519,6 +526,16 @@ func mgmtGetActiveClients() []clientStatus {
 	conn.Close()
 	return activeClients
 }
+
+func isUserConnected(username string, connectedUsers []clientStatus) bool {
+    for _, connectedUser := range connectedUsers {
+        if connectedUser.CommonName == username {
+            return true
+        }
+    }
+    return false
+}
+
 
 func indexTxtDateToHumanReadable(datetime string) string {
     layout := "060102150405Z"

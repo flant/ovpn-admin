@@ -24,8 +24,8 @@ fi
 
 cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
-[ -d /etc/openvpn/certs/pki ] && chmod 755 /etc/openvpn/certs/pki
-[ -f /etc/openvpn/certs/pki/crl.pem ] && chmod 644 /etc/openvpn/certs/pki/crl.pem
+[ -d $EASY_RSA_LOC/pki ] && chmod 755 $EASY_RSA_LOC/pki
+[ -f $EASY_RSA_LOC/pki/crl.pem ] && chmod 644 $EASY_RSA_LOC/pki/crl.pem
 
 mkdir -p /etc/openvpn/ccd
 

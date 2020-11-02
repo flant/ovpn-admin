@@ -10,7 +10,7 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - 1194:1194
+      - 7777:1194
     volumes:
       - ./easyrsa:/etc/openvpn/easyrsa
       - ./ccd:/etc/openvpn/ccd

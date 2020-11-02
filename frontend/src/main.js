@@ -108,6 +108,9 @@ new Vue({
         showWhenStatus: 'Active'
       }
     ],
+    filters: {
+      hide_revoked: true
+    },
     u: {
       newUserName: '',
 //      newUserPassword: 'nopass',
@@ -127,9 +130,6 @@ new Vue({
     }
   },
   watch: {
-//    u: function () {
-//      this.u.columns = Object.keys(this.u.data[0]) //.reverse()
-//    }
   },
   mounted: function () {
     this.u_get_data()
@@ -209,11 +209,22 @@ new Vue({
     modalShowCcdDisplay: function () {
       return this.u.modalShowCcdVisible ? {display: 'flex'} : {}
     },
+    filteredRows: function() {
+      var _this = this;
+
+      if(_this.filters.hide_revoked) {
+        return _this.rows.filter(function(account) {
+          return account.AccountStatus === "Active";
+        });
+      } else {
+        return _this.rows;
+      }
+    }
 
   },
   methods: {
     rowStyleClassFn: function(row) {
-      return row.ConnectionStatus == '' ? '' : 'active-row';
+      return row.ConnectionStatus == 'Connected' ? 'connected-user' : '' ;
     },
     rowActionFn: function(e) {
       this.username = e.target.dataset.username;
