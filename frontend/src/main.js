@@ -1,5 +1,6 @@
 import Vue from 'vue';
 import axios from 'axios';
+import VueCookies from 'vue-cookies'
 import VueClipboard from 'vue-clipboard2'
 import VueGoodTablePlugin from 'vue-good-table'
 
@@ -7,6 +8,7 @@ import 'vue-good-table/dist/vue-good-table.css'
 
 Vue.use(VueClipboard)
 Vue.use(VueGoodTablePlugin)
+Vue.use(VueCookies)
 
 var axios_cfg = function(url, data='', type='form') {
   if (data == '') {
@@ -109,7 +111,7 @@ new Vue({
       }
     ],
     filters: {
-      hide_revoked: true
+      hideRevoked: true,
     },
     u: {
       newUserName: '',
@@ -132,10 +134,16 @@ new Vue({
   watch: {
   },
   mounted: function () {
-    this.u_get_data()
+    this.u_get_data();
+    this.filters.hideRevoked = this.$cookies.isKey('hideRevoked') ? (this.$cookies.get('hideRevoked') == "true") : false
   },
   created() {
-    var _this = this
+    var _this = this;
+
+//    if (!_this.$cookies.isKey('hideRevoked')) {
+//      _this.$cookies.set('hideRevoked', true, -1);
+//    }
+
     _this.$root.$on('u-revoke', function (msg) {
       var data = new URLSearchParams();
       data.append('username', _this.username);
@@ -209,15 +217,16 @@ new Vue({
     modalShowCcdDisplay: function () {
       return this.u.modalShowCcdVisible ? {display: 'flex'} : {}
     },
+    revokeFilterText: function() {
+      return this.filters.hideRevoked ? "Show revoked" : "Hide revoked"
+    },
     filteredRows: function() {
-      var _this = this;
-
-      if(_this.filters.hide_revoked) {
-        return _this.rows.filter(function(account) {
+      if (this.filters.hideRevoked) {
+        return this.rows.filter(function(account) {
           return account.AccountStatus === "Active";
         });
       } else {
-        return _this.rows;
+        return this.rows;
       }
     }
 

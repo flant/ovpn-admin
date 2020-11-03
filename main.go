@@ -397,14 +397,21 @@ func usersList() []openvpnClient {
 }
 
 func userCreate(username string) (bool, string) {
+    ucErr := ""
     // TODO: add password for user cert . priority=low
 	if validateUsername(username) == false {
-		fmt.Printf("Username \"%s\" incorrect, you can use only %s\n", username, usernameRegexp)
-		return false, fmt.Sprintf("Username \"%s\" incorrect, you can use only %s", username, usernameRegexp)
+		ucErr = fmt.Sprintf("Username \"%s\" incorrect, you can use only %s\n", username, usernameRegexp)
+        if *debug {
+            log.Printf("ERROR: userCreate: %s", ucErr)
+        }
+		return false, ucErr
 	}
 	if checkUserExist(username) {
-		fmt.Printf("User \"%s\" already exists\n", username)
-		return false, fmt.Sprintf("User \"%s\" already exists", username)
+		ucErr = fmt.Sprintf("User \"%s\" already exists\n", username)
+        if *debug {
+            log.Printf("ERROR: userCreate: %s", ucErr)
+        }
+		return false, ucErr
 	}
 	o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && easyrsa build-client-full %s nopass", *easyrsaDirPath, username))
 	fmt.Println(o)

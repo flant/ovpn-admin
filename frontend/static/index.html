@@ -17,8 +17,7 @@
     :search-options="{ enabled: true}" >
     <div slot="table-actions">
       <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
-      <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hide_revoked=!filters.hide_revoked" v-show="filters.hide_revoked">Show revoked</button>
-      <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hide_revoked=!filters.hide_revoked" v-show="!filters.hide_revoked">Hide revoked</button>
+      <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hideRevoked=!filters.hideRevoked;this.$cookies.set('hideRevoked',!(this.$cookies.get('hideRevoked') == 'true'), -1);">{{ revokeFilterText }}</button>
     </div>
     <div slot="emptystate" class="d-flex justify-content-center">
       <h4>No users have been created yet.</h4>

@@ -13,6 +13,7 @@
     "axios": "^0.19.2",
     "vue": "^2.6.12",
     "vue-clipboard2": "^0.2.1",
+    "vue-cookies": "^1.7.4",
     "vue-good-table": "^2.21.1"
   },
   "browserslist": [
