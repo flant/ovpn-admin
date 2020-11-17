@@ -87,32 +87,45 @@ new Vue({
       {
         name: 'u-revoke',
         label: 'Revoke',
-        showWhenStatus: 'Active'
+        showWhenStatus: 'Active',
+        showForServerRole: ['master']
       },
       {
         name: 'u-unrevoke',
         label: 'Unrevoke',
-        showWhenStatus: 'Revoked'
+        showWhenStatus: 'Revoked',
+        showForServerRole: ['master']
       },
       {
         name: 'u-show-config',
         label: 'Show config',
-        showWhenStatus: 'Active'
+        showWhenStatus: 'Active',
+        showForServerRole: ['master', 'slave']
       },
       {
         name: 'u-download-config',
         label: 'Download config',
-        showWhenStatus: 'Active'
+        showWhenStatus: 'Active',
+        showForServerRole: ['master', 'slave']
       },
       {
         name: 'u-edit-ccd',
         label: 'Edit routes',
-        showWhenStatus: 'Active'
+        showWhenStatus: 'Active',
+        showForServerRole: ['master']
+      },
+      {
+        name: 'u-edit-ccd',
+        label: 'Show routes',
+        showWhenStatus: 'Active',
+        showForServerRole: ['slave']
       }
     ],
     filters: {
       hideRevoked: true,
     },
+    serverRole: "master",
+    lastSync: "unknown",
     u: {
       newUserName: '',
 //      newUserPassword: 'nopass',
@@ -134,22 +147,19 @@ new Vue({
   watch: {
   },
   mounted: function () {
-    this.u_get_data();
+    this.getUserData();
+    this.getServerRole();
     this.filters.hideRevoked = this.$cookies.isKey('hideRevoked') ? (this.$cookies.get('hideRevoked') == "true") : false
   },
   created() {
     var _this = this;
-
-//    if (!_this.$cookies.isKey('hideRevoked')) {
-//      _this.$cookies.set('hideRevoked', true, -1);
-//    }
 
     _this.$root.$on('u-revoke', function (msg) {
       var data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/revoke', data, 'form'))
       .then(function(response) {
-        _this.u_get_data();
+        _this.getUserData();
       });
     })
     _this.$root.$on('u-unrevoke', function () {
@@ -157,7 +167,7 @@ new Vue({
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/unrevoke', data, 'form'))
       .then(function(response) {
-        _this.u_get_data();
+        _this.getUserData();
       });
     })
     _this.$root.$on('u-show-config', function () {
@@ -191,7 +201,7 @@ new Vue({
         _this.u.ccd = response.data;
       });
     })
-    _this.$root.$on('u-disconnect-use', function () {
+    _this.$root.$on('u-disconnect-user', function () {
       _this.u.modalShowCcdVisible = true;
       var data = new URLSearchParams();
       data.append('username', _this.username);
@@ -202,8 +212,8 @@ new Vue({
     })
   },
   computed: {
-    customAddressEnabled: function () {
-      return this.u.ccd.ClientAddress == "dynamic"
+    customAddressDisabled: function () {
+      return this.serverRole == "master" ? this.u.ccd.ClientAddress == "dynamic" : true
     },
     ccdApplyStatusCssClass: function () {
         return this.u.ccdApplyStatus == 200 ? "alert-success" : "alert-danger"
@@ -223,30 +233,43 @@ new Vue({
     filteredRows: function() {
       if (this.filters.hideRevoked) {
         return this.rows.filter(function(account) {
-          return account.AccountStatus === "Active";
+          return account.AccountStatus == "Active"
         });
       } else {
-        return this.rows;
+        return this.rows
       }
     }
 
   },
   methods: {
     rowStyleClassFn: function(row) {
-      return row.ConnectionStatus == 'Connected' ? 'connected-user' : '' ;
+      return row.ConnectionStatus == 'Connected' ? 'connected-user' : ''
     },
     rowActionFn: function(e) {
       this.username = e.target.dataset.username;
       this.$root.$emit(e.target.dataset.name);
     },
-    u_get_data: function() {
+    getUserData: function() {
       var _this = this;
       axios.request(axios_cfg('api/users/list'))
+        .then(function(response) {
+          _this.rows = response.data;
+        });
+    },
+    getServerRole: function() {
+      var _this = this;
+      axios.request(axios_cfg('api/server/role'))
       .then(function(response) {
-        _this.rows = response.data;
+        _this.serverRole = response.data.serverRole;
+        if (_this.serverRole == "slave") {
+          axios.request(axios_cfg('api/sync/last'))
+          .then(function(response) {
+            _this.lastSync =  response.data;
+          });
+        }
       });
     },
-    create_user: function() {
+    createUser: function() {
       var _this = this;
 
       _this.u.newUserCreateError = "";
@@ -257,7 +280,7 @@ new Vue({
 
       axios.request(axios_cfg('api/user/create', data, 'form'))
       .then(function(response) {
-        _this.u_get_data();
+        _this.getUserData();
         _this.u.modalNewUserVisible = false;
         _this.u.newUserName = '';
 //        _this.u.newUserPassword = 'nopass';
@@ -266,7 +289,7 @@ new Vue({
         _this.u.newUserCreateError = error.response.data;
       });
     },
-    ccd_apply: function() {
+    ccdApply: function() {
       var _this = this;
 
       _this.u.ccdApplyStatus = "";

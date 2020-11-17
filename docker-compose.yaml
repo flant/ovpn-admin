@@ -10,17 +10,17 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - 7777:1194
+      - 7777:1194 # for openvpn
+      - 8080:8080 # for openvpn-admin because of network_mode
     volumes:
-      - ./easyrsa:/etc/openvpn/easyrsa
-      - ./ccd:/etc/openvpn/ccd
+      - ./easyrsa_master:/etc/openvpn/easyrsa
+      - ./ccd_master:/etc/openvpn/ccd
   openvpn-admin:
     build:
       context: .
     image: openvpn-admin:local
-    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --mgmt.host="openvpn"
-    ports:
-      - 8080:8080
+    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --master.sync-token="TOKEN"
+    network_mode: service:openvpn
     volumes:
-      - ./easyrsa:/mnt/easyrsa
-      - ./ccd:/mnt/ccd
+      - ./easyrsa_master:/mnt/easyrsa
+      - ./ccd_master:/mnt/ccd

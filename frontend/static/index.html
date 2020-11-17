@@ -16,12 +16,14 @@
     :row-style-class="rowStyleClassFn"
     :search-options="{ enabled: true}" >
     <div slot="table-actions">
-      <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      <button type="button" class="btn btn-sm btn-success el-square" v-if="serverRole == 'master'" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      <b-badget class="btn btn-sm btn-info el-square" v-if="serverRole == 'slave'">Slave - last sync: {{ lastSync }}</b-badget>
       <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hideRevoked=!filters.hideRevoked;this.$cookies.set('hideRevoked',!(this.$cookies.get('hideRevoked') == 'true'), -1);">{{ revokeFilterText }}</button>
     </div>
     <div slot="emptystate" class="d-flex justify-content-center">
       <h4>No users have been created yet.</h4>
-      <button type="button" class="btn btn-sm btn-success el-square" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      <br>
+      <button type="button" class="btn btn-sm btn-success el-square" v-if="serverRole == 'master'" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
     </div>
     <template slot="table-row" slot-scope="props">
       <span v-if="props.column.field == 'actions'">
@@ -34,7 +36,7 @@
           :data-text="action.label"
           @click.left.stop="rowActionFn"
           v-for="action in actions"
-          v-if="action.showWhenStatus == props.row.AccountStatus">
+          v-if="action.showWhenStatus == props.row.AccountStatus && action.showForServerRole.includes(serverRole)">
           {{ action.label }}
         </button>
       </span>
@@ -62,7 +64,7 @@
           </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="create_user();">Create</button>
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="createUser();">Create</button>
             <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newUserName='';u.newUserPassword='nopass';u.modalNewUserVisible=false">Close</button>
         </div>
       </div>
@@ -98,10 +100,10 @@
             <h4 class="static-address-label ">Client "{{ username }}" static address</h4>
             <div class="input-group-prepend">
               <div class="input-group-text">
-                <input id="enable-static" type="checkbox" onchange="document.getElementById('staticAddress').disabled=!this.checked;" v-bind:checked="!customAddressEnabled">
+                <input id="enable-static" type="checkbox" onchange="document.getElementById('staticAddress').disabled=!this.checked;" v-if="serverRole == 'master'" v-bind:checked="customAddressDisabled">
               </div>
             </div>
-            <input id="staticAddress" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressEnabled">
+            <input id="staticAddress" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
           </div>
 
         </div>
@@ -122,10 +124,10 @@
                   <td>{{ customRoute.Mask }}</td>
                   <td>{{ customRoute.Description }}</td>
                   <td>
-                    <button type="button" class="btn btn-primary btn-sm el-square modal-el-margin" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
+                    <button type="button" class="btn btn-primary btn-sm el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
                   </td>
                 </tr>
-                <tr>
+                <tr v-if="serverRole == 'master'">
                   <td><input type="text" v-model="u.newRoute.Address"/></td>
                   <td><input type="text" v-model="u.newRoute.Mask"/></td>
                   <td><input type="text" v-model="u.newRoute.Description"/></td>
@@ -143,7 +145,7 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="ccd_apply()">Save</button>
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="ccdApply()">Save</button>
             <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.ccd={Name:'',ClientAddress:'',CustomRoutes:[]};u.ccdApplyStatusMessage='';u.ccdApplyStatus='';u.modalShowCcdVisible=false">Close</button>
         </div>
       </div>

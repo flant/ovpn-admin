@@ -1,8 +1,6 @@
 #!/bin/bash
 
-if [ ! -d easyrsa ]; then
-  mkdir easyrsa
-fi
+mkdir -p easyrsa
 
 cd easyrsa
 
@@ -15,6 +13,6 @@ if [ -d pki ]; then
 fi
 
 ./easyrsa init-pki
-echo "ca\n" | ./easyrsa build-ca nopass
+echo "ca" | ./easyrsa build-ca nopass
 ./easyrsa build-server-full server nopass
 ./easyrsa build-client-full client nopass

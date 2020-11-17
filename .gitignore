@@ -1,6 +1,17 @@
 easyrsa
+easyrsa_master
+easyrsa_slave
 ccd
+ccd_master
+ccd_slave
 openvpn-web-ui
 openvpn-ui
 openvpn-admin
 frontend/node_modules
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

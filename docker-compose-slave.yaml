@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  openvpn:
+    build:
+      context: .
+      dockerfile: Dockerfile.openvpn
+    image: openvpn:local
+    command: /etc/openvpn/setup/configure.sh
+    environment:
+      - OPVN_ROLE=slave
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 7778:1194 # for openvpn
+      - 8081:8080 # for openvpn-admin because of network_mode
+    volumes:
+      - ./easyrsa_slave:/etc/openvpn/easyrsa
+      - ./ccd_slave:/etc/openvpn/ccd
+  openvpn-admin:
+    build:
+      context: .
+    image: openvpn-admin:local
+    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --master.sync-token="TOKEN" --master.host="http://172.20.0.1:8080" --role="slave" --ovpn.host="127.0.0.1:7744" --ovpn.host="127.0.0.1:7778"
+    environment:
+      - OPVN_SLAVE=1
+    network_mode: service:openvpn
+    volumes:
+      - ./easyrsa_slave:/mnt/easyrsa
+      - ./ccd_slave:/mnt/ccd

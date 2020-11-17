@@ -1,17 +1,27 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -x
+
 EASY_RSA_LOC="/etc/openvpn/easyrsa"
 SERVER_CERT="${EASY_RSA_LOC}/pki/issued/server.crt"
 cd $EASY_RSA_LOC
 if [ -e "$SERVER_CERT" ]; then
-  echo "found existing certs - reusing"
+  echo "Found existing certs - reusing"
 else
-  easyrsa init-pki
-  cp -R /usr/share/easy-rsa/* $EASY_RSA_LOC/pki
-  echo "ca" | easyrsa build-ca nopass
-  easyrsa build-server-full server nopass
-  easyrsa gen-dh
-  openvpn --genkey --secret ./pki/ta.key
+  if [ ${OPVN_ROLE:-"master"} = "slave" ]; then
+    echo "Waiting for syncing data from master"
+    while [ $(wget -q localhost/api/sync/last -O - | wc -m) -lt 1 ]
+    do
+      sleep 5
+    done
+  else
+    echo "Generating new certs"
+    easyrsa init-pki
+    cp -R /usr/share/easy-rsa/* $EASY_RSA_LOC/pki
+    echo "ca" | easyrsa build-ca nopass
+    easyrsa build-server-full server nopass
+    easyrsa gen-dh
+    openvpn --genkey --secret ./pki/ta.key
+  fi
 fi
 easyrsa gen-crl
 

@@ -1,4 +1,7 @@
-remote {{ .Host }} {{ .Port }} tcp
+{{- range $server := .Hosts }}
+remote {{ $server.Host }} {{ $server.Port }} tcp
+{{- end }}
+
 verb 4
 client
 nobind

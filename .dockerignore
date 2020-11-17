@@ -6,7 +6,11 @@ gen
 
 
 easyrsa
+easyrsa_master
+easyrsa_slave
 ccd
+ccd_master
+ccd_slave
 werf.yaml
 frontend/node_modules
 openvpn-web-ui
