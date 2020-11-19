@@ -28,12 +28,12 @@ var (
 	listenHost      		= kingpin.Flag("listen.host","host for openvpn-admin").Default("0.0.0.0").String()
 	listenPort      		= kingpin.Flag("listen.port","port for openvpn-admin").Default("8080").String()
     serverRole              = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
-	masterHost              = kingpin.Flag("master.host","Url for master server").Default("http://127.0.0.1").String()
+	masterHost              = kingpin.Flag("master.host","url for master server").Default("http://127.0.0.1").String()
 	masterBasicAuthUser		= kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").String()
 	masterBasicAuthPassword = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
 	masterSyncFrequency     = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
-	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Required().String()
-	openvpnServer      		= kingpin.Flag("ovpn.host","host for openvpn server").Default("127.0.0.1:7777").PlaceHolder("HOST:PORT").Strings()
+	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Default("justasimpleword").PlaceHolder("TOKEN").String()
+	openvpnServer      		= kingpin.Flag("ovpn.host","host(s) for openvpn server").Default("127.0.0.1:7777").PlaceHolder("HOST:PORT").Strings()
 	openvpnNetwork          = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
 	mgmtListenHost          = kingpin.Flag("mgmt.host","host for openvpn server mgmt interface").Default("127.0.0.1").String()
 	mgmtListenPort          = kingpin.Flag("mgmt.port","port for openvpn server mgmt interface").Default("8989").String()
@@ -46,7 +46,8 @@ var (
 	certsArchivePath        = "/tmp/" + certsArchiveFileName
 	ccdArchivePath          = "/tmp/" + ccdArchiveFileName
 	lastSyncTime 		    = ""
-	masterHostBsicAuth      = false
+	lastSuccessfulSyncTime  = ""
+	masterHostBasicAuth      = false
 )
 
 type OpenvpnServer struct {
@@ -198,6 +199,10 @@ func lastSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, lastSyncTime)
 }
 
+func lastSuccessfulSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, lastSuccessfulSyncTime)
+}
+
 func downloadCertsHandler(w http.ResponseWriter, r *http.Request) {
 	if *serverRole == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
@@ -238,7 +243,7 @@ func main() {
     kingpin.Parse()
 
 	if *masterBasicAuthPassword != "" && *masterBasicAuthUser != "" {
-		masterHostBsicAuth = true
+		masterHostBasicAuth = true
 	}
 
 	fmt.Println("Bind: http://" + *listenHost + ":" + *listenPort)
@@ -261,7 +266,8 @@ func main() {
 	http.HandleFunc("/api/user/ccd", userShowCcdHandler)
 	http.HandleFunc("/api/user/ccd/apply", userApplyCcdHandler)
 
-	http.HandleFunc("/api/sync/last", lastSyncTimeHandler)
+	http.HandleFunc("/api/sync/last/try", lastSyncTimeHandler)
+	http.HandleFunc("/api/sync/last/successful", lastSuccessfulSyncTimeHandler)
 	http.HandleFunc(downloadCertsApiUrl, downloadCertsHandler)
 	http.HandleFunc(downloadCcdApiUrl, downloadCddHandler)
 
@@ -659,9 +665,9 @@ func downloadCerts() bool {
 	if fExist(certsArchivePath) {
 		fDelete(certsArchivePath)
 	}
-    err := fDownload(certsArchivePath, *masterHost + downloadCertsApiUrl + "?token=" + *masterSyncToken, masterHostBsicAuth)
+    err := fDownload(certsArchivePath, *masterHost + downloadCertsApiUrl + "?token=" + *masterSyncToken, masterHostBasicAuth)
     if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return false
 	}
 
@@ -673,9 +679,9 @@ func downloadCcd() bool {
 		fDelete(ccdArchivePath)
 	}
 
-	err := fDownload(ccdArchivePath, *masterHost + downloadCcdApiUrl + "?token=" + *masterSyncToken, masterHostBsicAuth)
+	err := fDownload(ccdArchivePath, *masterHost + downloadCcdApiUrl + "?token=" + *masterSyncToken, masterHostBasicAuth)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return false
 	}
 
@@ -705,13 +711,41 @@ func unArchiveCcd() {
 }
 
 func syncDataFromMaster() {
-	downloadCerts()
-	downloadCcd()
+	log.Println("Downloading archives from master")
+	retryCountMax := 3
 
-	unArchiveCerts()
-	unArchiveCcd()
+	certsDownloadFailed := true
+	ccdDownloadFailed := true
+
+	certsDownloadRetries := 0
+	ccdDownloadRetries := 0
+
+	for certsDownloadFailed && certsDownloadRetries < retryCountMax {
+		certsDownloadRetries += 1
+		if downloadCerts() {
+			certsDownloadFailed = false
+			log.Println("Decompression certs archive from master")
+			unArchiveCerts()
+		} else {
+			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d", certsDownloadRetries)
+		}
+	}
+
+	for ccdDownloadFailed && ccdDownloadRetries < retryCountMax {
+		ccdDownloadRetries += 1
+		if downloadCcd() {
+			ccdDownloadFailed = false
+			log.Println("Decompression ccd archive from master")
+			unArchiveCcd()
+		} else {
+			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d", ccdDownloadRetries)
+		}
+	}
 
 	lastSyncTime = time.Now().Format("2006-01-02 15:04:05")
+	if !ccdDownloadFailed && !certsDownloadFailed {
+		lastSuccessfulSyncTime = time.Now().Format("2006-01-02 15:04:05")
+	}
 }
 
 func syncWithMaster() {

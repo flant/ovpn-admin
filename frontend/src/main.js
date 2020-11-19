@@ -262,7 +262,7 @@ new Vue({
       .then(function(response) {
         _this.serverRole = response.data.serverRole;
         if (_this.serverRole == "slave") {
-          axios.request(axios_cfg('api/sync/last'))
+          axios.request(axios_cfg('api/sync/last/successful'))
           .then(function(response) {
             _this.lastSync =  response.data;
           });

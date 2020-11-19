@@ -8,8 +8,8 @@ if [ -e "$SERVER_CERT" ]; then
   echo "Found existing certs - reusing"
 else
   if [ ${OPVN_ROLE:-"master"} = "slave" ]; then
-    echo "Waiting for syncing data from master"
-    while [ $(wget -q localhost/api/sync/last -O - | wc -m) -lt 1 ]
+    echo "Waiting for initial sync data from master"
+    while [ $(wget -q localhost/api/sync/last/try -O - | wc -m) -lt 1 ]
     do
       sleep 5
     done
