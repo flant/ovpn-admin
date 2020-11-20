@@ -16,7 +16,7 @@
     :row-style-class="rowStyleClassFn"
     :search-options="{ enabled: true}" >
     <div slot="table-actions">
-      <button type="button" class="btn btn-sm btn-success el-square" v-if="serverRole == 'master'" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
+      <button type="button" class="btn btn-sm btn-success el-square" v-show="serverRole == 'master'" v-on:click.stop="u.modalNewUserVisible=true">Add user</button>
       <b-badget class="btn btn-sm btn-info el-square" v-if="serverRole == 'slave'">Slave - last sync: {{ lastSync }}</b-badget>
       <button type="button" class="btn btn-sm btn-secondary el-square" v-on:click.stop="filters.hideRevoked=!filters.hideRevoked;this.$cookies.set('hideRevoked',!(this.$cookies.get('hideRevoked') == 'true'), -1);">{{ revokeFilterText }}</button>
     </div>
@@ -115,23 +115,38 @@
                   <th scope="col">Address</th>
                   <th scope="col">Mask</th>
                   <th scope="col">Description</th>
-                  <th scope="col">Action</th>
+                  <th scope="col" v-if="serverRole == 'master'">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(customRoute, index) in u.ccd.CustomRoutes">
-                  <td>{{ customRoute.Address }}</td>
-                  <td>{{ customRoute.Mask }}</td>
-                  <td>{{ customRoute.Description }}</td>
                   <td>
-                    <button type="button" class="btn btn-primary btn-sm el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
+                    <div v-if = "serverRole == 'slave'">
+                      {{ customRoute.Address }}
+                    </div>
+                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Address">
+                  </td>
+                  <td>
+                    <div v-if = "serverRole == 'slave'">
+                    {{ customRoute.Mask }}
+                    </div>
+                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Mask">
+                  </td>
+                  <td>
+                    <div v-if = "serverRole == 'slave'">
+                    {{ customRoute.Description }}
+                    </div>
+                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Description">
+                  </td>
+                  <td class="text-right" v-if="serverRole == 'master'">
+                      <button type="button" class="btn btn-danger btn-sm el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
                   </td>
                 </tr>
                 <tr v-if="serverRole == 'master'">
                   <td><input type="text" v-model="u.newRoute.Address"/></td>
                   <td><input type="text" v-model="u.newRoute.Mask"/></td>
                   <td><input type="text" v-model="u.newRoute.Description"/></td>
-                  <td>
+                  <td class="text-right" v-if="serverRole == 'master'">
                     <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="u.ccd.CustomRoutes.push(u.newRoute);u.newRoute={};">Add</button>
                   </td>
                 </tr>

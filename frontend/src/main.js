@@ -207,7 +207,7 @@ new Vue({
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/disconnect', data, 'form'))
       .then(function(response) {
-        _this.u.ccd = response.data;
+        console.log(response.data);
       });
     })
   },

@@ -758,7 +758,7 @@ func syncWithMaster() {
 // https://community.openvpn.net/openvpn/ticket/623
 func crlFix() {
 	os.Chmod(*easyrsaDirPath + "/pki", 0755)
-	err := os.Chmod(*easyrsaDirPath + "/pki/crl.pem", 0640)
+	err := os.Chmod(*easyrsaDirPath + "/pki/crl.pem", 0644)
 	if err != nil {
 		log.Println(err)
 	}
