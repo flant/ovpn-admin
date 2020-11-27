@@ -10,13 +10,20 @@ import (
 	"time"
 )
 
-func indexTxtDateToHumanReadable(datetime string) string {
-	layout := "060102150405Z"
+func parseDate(layout,datetime string) time.Time {
 	t, err := time.Parse(layout, datetime)
 	if err != nil {
 		log.Println(err)
 	}
-	return t.Format("2006-01-02 15:04:05")
+	return t
+}
+
+func parseDateToString(layout,datetime,format string) string {
+	return parseDate(layout, datetime).Format(format)
+}
+
+func parseDateToUnix(layout,datetime string) int64 {
+	return parseDate(layout, datetime).Unix()
 }
 
 func runBash(script string) string {

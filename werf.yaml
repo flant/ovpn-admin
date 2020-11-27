@@ -1,4 +1,4 @@
-project: openvpn-web-ui
+project: openvpn-admin
 configVersion: 1
 deploy:
   helmRelease: "[[ project ]]-[[ env ]]"

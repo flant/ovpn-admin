@@ -5,12 +5,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -22,9 +25,13 @@ const (
 	downloadCcdApiUrl = "/api/data/ccd/download"
 	certsArchiveFileName = "certs.tar.gz"
 	ccdArchiveFileName = "ccd.tar.gz"
+	indexTxtDateLayout = "060102150405Z"
+	stringDateFormat = "2006-01-02 15:04:05"
+	ovpnStatusDateLayout = "Mon Jan 2 15:04:05 2006"
 )
 
 var (
+
 	listenHost      		= kingpin.Flag("listen.host","host for openvpn-admin").Default("0.0.0.0").String()
 	listenPort      		= kingpin.Flag("listen.port","port for openvpn-admin").Default("8080").String()
     serverRole              = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
@@ -37,6 +44,7 @@ var (
 	openvpnNetwork          = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
 	mgmtListenHost          = kingpin.Flag("mgmt.host","host for openvpn server mgmt interface").Default("127.0.0.1").String()
 	mgmtListenPort          = kingpin.Flag("mgmt.port","port for openvpn server mgmt interface").Default("8989").String()
+	metricsPath 			= kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
 	easyrsaDirPath     		= kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("/mnt/easyrsa").String()
 	indexTxtPath    		= kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("/mnt/easyrsa/pki/index.txt").String()
 	ccdDir          		= kingpin.Flag("ccd.path", "path to client-config-dir").Default("/mnt/ccd").String()
@@ -45,10 +53,94 @@ var (
 
 	certsArchivePath        = "/tmp/" + certsArchiveFileName
 	ccdArchivePath          = "/tmp/" + ccdArchiveFileName
-	lastSyncTime 		    = ""
-	lastSuccessfulSyncTime  = ""
-	masterHostBasicAuth      = false
+
 )
+
+var (
+
+	ovpnServerCertExpire = prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ovpn_server_cert_expire",
+			Help: "openvpn server certificate expire time in days",
+		},
+	)
+
+	ovpnServerCaCertExpire = prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ovpn_server_ca_cert_expire",
+			Help: "openvpn server CA certificate expire time in days",
+		},
+	)
+
+	ovpnClientsTotal = prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ovpn_clients_total",
+			Help: "total openvpn users",
+		},
+	)
+
+	ovpnClientsRevoked = prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ovpn_clients_revoked",
+			Help: "revoked openvpn users",
+		},
+	)
+
+	ovpnClientsExpired = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "ovpn_clients_expired",
+		Help: "expired openvpn users",
+	},
+	)
+
+	ovpnClientsConnected = prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "ovpn_clients_connected",
+			Help: "connected openvpn users",
+		},
+	)
+
+	ovpnClientCertificateExpire = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ovpn_client_cert_expire",
+		Help: "openvpn user certificate expire time in days",
+	},
+		[]string{"client"},
+	)
+
+	ovpnClientConnectionInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ovpn_client_connection_info",
+			Help: "openvpn user connection info. ip - assigned address from opvn network. value - last time when connection was refreshed in unix format",
+		},
+		[]string{"client", "ip"},
+	)
+
+	ovpnClientConnectionFrom = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ovpn_client_connection_from",
+		Help: "openvpn user connection info. ip - from which address connection was initialized. value - time when connection was initialized in unix format",
+	},
+		[]string{"client", "ip"},
+	)
+
+	ovpnClientBytesReceived = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ovpn_client_bytes_received",
+			Help: "openvpn user bytes received",
+		},
+		[]string{"client"},
+	)
+
+	ovpnClientBytesSent = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "ovpn_client_bytes_sent",
+			Help: "openvpn user bytes sent",
+		},
+		[]string{"client"},
+	)
+
+)
+
+type OpenvpnAdmin struct {
+	role string
+	lastSyncTime string
+	lastSuccessfulSyncTime  string
+	masterHostBasicAuth bool
+	masterSyncToken string
+	clients []OpenvpnClient
+	activeClients []clientStatus
+	promRegistry *prometheus.Registry
+}
 
 type OpenvpnServer struct {
 	Host string
@@ -101,23 +193,28 @@ type clientStatus struct {
 	ConnectedSince         string
 	VirtualAddress         string
 	LastRef                string
-	ConnectedSinceFormated string
-	LastRefFormated        string
+	ConnectedSinceFormatted string
+	LastRefFormatted        string
 }
 
-
-func userListHandler(w http.ResponseWriter, r *http.Request) {
-	usersList, _ := json.Marshal(usersList())
+func (oAdmin *OpenvpnAdmin) userListHandler(w http.ResponseWriter, r *http.Request) {
+	usersList, _ := json.Marshal(oAdmin.clients)
 	fmt.Fprintf(w, "%s", usersList)
 }
 
-func userCreateHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) userStatisticHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	userStatistic, _ := json.Marshal(oAdmin.getUserStatistic(r.FormValue("username")))
+	fmt.Fprintf(w, "%s", userStatistic)
+}
+
+func (oAdmin *OpenvpnAdmin) userCreateHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
 	r.ParseForm()
-	userCreated, userCreateStatus := userCreate(r.FormValue("username"))
+	userCreated, userCreateStatus := oAdmin.userCreate(r.FormValue("username"))
 
     if userCreated {
         w.WriteHeader(http.StatusOK)
@@ -128,44 +225,44 @@ func userCreateHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func userRevokeHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) userRevokeHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
 	r.ParseForm()
-	fmt.Fprintf(w, "%s", userRevoke(r.FormValue("username")))
+	fmt.Fprintf(w, "%s", oAdmin.userRevoke(r.FormValue("username")))
 }
 
-func userUnrevokeHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) userUnrevokeHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
 
 	r.ParseForm()
-	fmt.Fprintf(w, "%s", userUnrevoke(r.FormValue("username")))
+	fmt.Fprintf(w, "%s", oAdmin.userUnrevoke(r.FormValue("username")))
 }
 
-func userShowConfigHandler(w http.ResponseWriter, r *http.Request) {
+func (oAdmin *OpenvpnAdmin) userShowConfigHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	fmt.Fprintf(w, "%s", renderClientConfig(r.FormValue("username")))
+	fmt.Fprintf(w, "%s", oAdmin.renderClientConfig(r.FormValue("username")))
 }
 
-func userDisconnectHandler(w http.ResponseWriter, r *http.Request) {
+func (oAdmin *OpenvpnAdmin) userDisconnectHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 // 	fmt.Fprintf(w, "%s", userDisconnect(r.FormValue("username")))
 	fmt.Fprintf(w, "%s", r.FormValue("username"))
 }
 
-func userShowCcdHandler(w http.ResponseWriter, r *http.Request) {
+func (oAdmin *OpenvpnAdmin) userShowCcdHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	ccd, _ := json.Marshal(getCcd(r.FormValue("username")))
+	ccd, _ := json.Marshal(oAdmin.getCcd(r.FormValue("username")))
 	fmt.Fprintf(w, "%s", ccd)
 }
 
-func userApplyCcdHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) userApplyCcdHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
@@ -180,7 +277,7 @@ func userApplyCcdHandler(w http.ResponseWriter, r *http.Request) {
         log.Println(err)
     }
 
-    ccdApplied, applyStatus := modifyCcd(ccd)
+    ccdApplied, applyStatus := oAdmin.modifyCcd(ccd)
 
     if ccdApplied {
         w.WriteHeader(http.StatusOK)
@@ -191,27 +288,27 @@ func userApplyCcdHandler(w http.ResponseWriter, r *http.Request) {
     }
 }
 
-func serverRoleHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, `{"status":"ok", "serverRole": "%s" }`, *serverRole)
+func (oAdmin *OpenvpnAdmin) serverRoleHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, `{"status":"ok", "serverRole": "%s" }`, oAdmin.role)
 }
 
-func lastSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, lastSyncTime)
+func (oAdmin *OpenvpnAdmin) lastSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, oAdmin.lastSyncTime)
 }
 
-func lastSuccessfulSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, lastSuccessfulSyncTime)
+func (oAdmin *OpenvpnAdmin) lastSuccessfulSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, oAdmin.lastSuccessfulSyncTime)
 }
 
-func downloadCertsHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) downloadCertsHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
 	r.ParseForm()
 	token := r.Form.Get("token")
 
-	if token != *masterSyncToken {
+	if token != oAdmin.masterSyncToken {
 		http.Error(w, `{"status":"error"}`, http.StatusForbidden)
 		return
 	}
@@ -221,15 +318,15 @@ func downloadCertsHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w,r, certsArchivePath)
 }
 
-func downloadCddHandler(w http.ResponseWriter, r *http.Request) {
-	if *serverRole == "slave" {
+func (oAdmin *OpenvpnAdmin) downloadCddHandler(w http.ResponseWriter, r *http.Request) {
+	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
 		return
 	}
 	r.ParseForm()
 	token := r.Form.Get("token")
 
-	if token != *masterSyncToken {
+	if token != oAdmin.masterSyncToken {
 		http.Error(w, `{"status":"error"}`, http.StatusForbidden)
 		return
 	}
@@ -242,35 +339,54 @@ func downloadCddHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
     kingpin.Parse()
 
+	ovpnAdmin := new(OpenvpnAdmin)
+	ovpnAdmin.lastSyncTime = "unknown"
+	ovpnAdmin.role = *serverRole
+	ovpnAdmin.lastSuccessfulSyncTime = "unknown"
+	ovpnAdmin.masterSyncToken = *masterSyncToken
+	ovpnAdmin.promRegistry = prometheus.NewRegistry()
+
+	ovpnAdmin.registerMetrics()
+	ovpnAdmin.setState()
+
+	go ovpnAdmin.updateState()
+
 	if *masterBasicAuthPassword != "" && *masterBasicAuthUser != "" {
-		masterHostBasicAuth = true
+		ovpnAdmin.masterHostBasicAuth = true
+	} else {
+		ovpnAdmin.masterHostBasicAuth = false
 	}
 
-	fmt.Println("Bind: http://" + *listenHost + ":" + *listenPort)
-
-	if *serverRole == "slave" {
-		syncDataFromMaster()
-	    go syncWithMaster()
+	if ovpnAdmin.role == "slave" {
+		ovpnAdmin.syncDataFromMaster()
+	    go ovpnAdmin.syncWithMaster()
 	}
 
 	fs := CacheControlWrapper(http.FileServer(http.Dir(*staticPath)))
 
 	http.Handle("/", fs)
-	http.HandleFunc("/api/server/role", serverRoleHandler)
-	http.HandleFunc("/api/users/list", userListHandler)
-	http.HandleFunc("/api/user/create", userCreateHandler)
-	http.HandleFunc("/api/user/revoke", userRevokeHandler)
-	http.HandleFunc("/api/user/unrevoke", userUnrevokeHandler)
-	http.HandleFunc("/api/user/config/show", userShowConfigHandler)
-	http.HandleFunc("/api/user/disconnect", userDisconnectHandler)
-	http.HandleFunc("/api/user/ccd", userShowCcdHandler)
-	http.HandleFunc("/api/user/ccd/apply", userApplyCcdHandler)
+	http.HandleFunc("/api/server/role", ovpnAdmin.serverRoleHandler)
+	http.HandleFunc("/api/users/list", ovpnAdmin.userListHandler)
+	http.HandleFunc("/api/user/create", ovpnAdmin.userCreateHandler)
+	http.HandleFunc("/api/user/revoke", ovpnAdmin.userRevokeHandler)
+	http.HandleFunc("/api/user/unrevoke", ovpnAdmin.userUnrevokeHandler)
+	http.HandleFunc("/api/user/config/show", ovpnAdmin.userShowConfigHandler)
+	http.HandleFunc("/api/user/disconnect", ovpnAdmin.userDisconnectHandler)
+	http.HandleFunc("/api/user/statistic", ovpnAdmin.userStatisticHandler)
+	http.HandleFunc("/api/user/ccd", ovpnAdmin.userShowCcdHandler)
+	http.HandleFunc("/api/user/ccd/apply", ovpnAdmin.userApplyCcdHandler)
 
-	http.HandleFunc("/api/sync/last/try", lastSyncTimeHandler)
-	http.HandleFunc("/api/sync/last/successful", lastSuccessfulSyncTimeHandler)
-	http.HandleFunc(downloadCertsApiUrl, downloadCertsHandler)
-	http.HandleFunc(downloadCcdApiUrl, downloadCddHandler)
+	http.HandleFunc("/api/sync/last/try", ovpnAdmin.lastSyncTimeHandler)
+	http.HandleFunc("/api/sync/last/successful", ovpnAdmin.lastSuccessfulSyncTimeHandler)
+	http.HandleFunc(downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
+	http.HandleFunc(downloadCcdApiUrl, ovpnAdmin.downloadCddHandler)
 
+	http.Handle(*metricsPath, promhttp.HandlerFor(ovpnAdmin.promRegistry, promhttp.HandlerOpts{}))
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "pong")
+	})
+
+	fmt.Println("Bind: http://" + *listenHost + ":" + *listenPort)
 	log.Fatal(http.ListenAndServe(*listenHost + ":" + *listenPort, nil))
 }
 
@@ -279,6 +395,38 @@ func CacheControlWrapper(h http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 		h.ServeHTTP(w, r)
 	})
+}
+
+func (oAdmin *OpenvpnAdmin) registerMetrics() {
+	oAdmin.promRegistry.MustRegister(ovpnServerCertExpire)
+	oAdmin.promRegistry.MustRegister(ovpnServerCaCertExpire)
+	oAdmin.promRegistry.MustRegister(ovpnClientsTotal)
+	oAdmin.promRegistry.MustRegister(ovpnClientsRevoked)
+	oAdmin.promRegistry.MustRegister(ovpnClientsConnected)
+	oAdmin.promRegistry.MustRegister(ovpnClientsExpired)
+	oAdmin.promRegistry.MustRegister(ovpnClientCertificateExpire)
+	oAdmin.promRegistry.MustRegister(ovpnClientConnectionInfo)
+	oAdmin.promRegistry.MustRegister(ovpnClientConnectionFrom)
+	oAdmin.promRegistry.MustRegister(ovpnClientBytesReceived)
+	oAdmin.promRegistry.MustRegister(ovpnClientBytesSent)
+}
+
+func (oAdmin *OpenvpnAdmin) setState() {
+	oAdmin.activeClients = oAdmin.mgmtGetActiveClients()
+	oAdmin.clients = oAdmin.usersList()
+
+	ovpnServerCaCertExpire.Set(float64(getOpvnCaCertExpireDate().Unix() - time.Now().Unix() / 3600 / 24))
+}
+
+func (oAdmin *OpenvpnAdmin) updateState() {
+	for {
+		time.Sleep(time.Duration(28) * time.Second)
+		ovpnClientBytesSent.Reset()
+		ovpnClientBytesReceived.Reset()
+		ovpnClientConnectionFrom.Reset()
+		ovpnClientConnectionInfo.Reset()
+		go oAdmin.setState()
+	}
 }
 
 func indexTxtParser(txt string) []indexTxtLine {
@@ -298,6 +446,7 @@ func indexTxtParser(txt string) []indexTxtLine {
 			}
 		}
 	}
+
 	return indexTxt
 }
 
@@ -315,7 +464,7 @@ func renderIndexTxt(data []indexTxtLine) string {
 	return indexTxt
 }
 
-func renderClientConfig(username string) string {
+func (oAdmin *OpenvpnAdmin) renderClientConfig(username string) string {
 	if checkUserExist(username) {
 		var hosts []OpenvpnServer
 
@@ -333,18 +482,21 @@ func renderClientConfig(username string) string {
 
 		t, _ := template.ParseFiles("client.conf.tpl")
 		var tmp bytes.Buffer
-		t.Execute(&tmp, conf)
+		err := t.Execute(&tmp, conf)
+		if err != nil {
+			log.Printf("WARNING: something goes wrong during rendering config for %s", username )
+		}
 
 		hosts = nil
 
 		fmt.Printf("%+v\n", tmp.String())
-		return (fmt.Sprintf("%+v\n", tmp.String()))
+		return fmt.Sprintf("%+v\n", tmp.String())
 	}
 	fmt.Printf("User \"%s\" not found", username)
 	return fmt.Sprintf("User \"%s\" not found", username)
 }
 
-func parseCcd(username string) Ccd {
+func (oAdmin *OpenvpnAdmin) parseCcd(username string) Ccd {
 	ccd := Ccd{}
 	ccd.User = username
 	ccd.ClientAddress = "dynamic"
@@ -367,7 +519,7 @@ func parseCcd(username string) Ccd {
 	return ccd
 }
 
-func modifyCcd(ccd Ccd) (bool, string) {
+func (oAdmin *OpenvpnAdmin) modifyCcd(ccd Ccd) (bool, string) {
 	ccdErr := "something goes wrong"
 
     if fCreate(*ccdDir + "/" + ccd.User) {
@@ -446,14 +598,14 @@ func validateCcd(ccd Ccd) (bool, string) {
 	return true, ccdErr
 }
 
-func getCcd(username string) Ccd {
+func (oAdmin *OpenvpnAdmin) getCcd(username string) Ccd {
 	ccd := Ccd{}
 	ccd.User = username
 	ccd.ClientAddress = "dynamic"
 	ccd.CustomRoutes = []ccdRoute{}
 
     if fCreate(*ccdDir + "/" + username) {
-        ccd = parseCcd(username)
+        ccd = oAdmin.parseCcd(username)
     }
     return ccd
 }
@@ -481,33 +633,64 @@ func checkUserExist(username string) bool {
 	return false
 }
 
-func usersList() []OpenvpnClient {
+func (oAdmin *OpenvpnAdmin) usersList() []OpenvpnClient {
 	var users []OpenvpnClient
-	activeClients := mgmtGetActiveClients()
+
+	totalCerts := 0
+	validCerts := 0
+	revokedCerts := 0
+	expiredCerts := 0
+	connectedUsers := 0
+	apochNow := time.Now().Unix()
 
 	for _, line := range indexTxtParser(fRead(*indexTxtPath)) {
 	    if line.Identity != "server" {
-	        ovpnClient := OpenvpnClient{Identity: line.Identity, ExpirationDate: indexTxtDateToHumanReadable(line.ExpirationDate)}
+			totalCerts += 1
+	        ovpnClient := OpenvpnClient{Identity: line.Identity, ExpirationDate: parseDateToString(indexTxtDateLayout, line.ExpirationDate, stringDateFormat)}
             switch {
                 case line.Flag == "V":
                     ovpnClient.AccountStatus = "Active"
-                case line.Flag == "R":
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					validCerts += 1
+			case line.Flag == "R":
                     ovpnClient.AccountStatus = "Revoked"
-                    ovpnClient.RevocationDate = indexTxtDateToHumanReadable(line.RevocationDate)
+                    ovpnClient.RevocationDate = parseDateToString(indexTxtDateLayout, line.RevocationDate, stringDateFormat)
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					revokedCerts += 1
                 case line.Flag == "E":
                     ovpnClient.AccountStatus = "Expired"
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					expiredCerts += 1
             }
-            if isUserConnected(line.Identity, activeClients) {
+
+            if isUserConnected(line.Identity, oAdmin.activeClients) {
                 ovpnClient.ConnectionStatus = "Connected"
+				connectedUsers += 1
             }
+
             users = append(users, ovpnClient)
-        }
+
+        } else {
+			ovpnServerCertExpire.Set(float64(parseDateToUnix(indexTxtDateLayout,line.ExpirationDate) - apochNow / 3600 / 24))
+		}
 	}
+
+	otherCerts := totalCerts - validCerts - revokedCerts - expiredCerts
+
+	if otherCerts != 0 {
+		log.Printf("WARNING: there are %d otherCerts", otherCerts)
+	}
+
+	ovpnClientsTotal.Set(float64(totalCerts))
+	ovpnClientsRevoked.Set(float64(revokedCerts))
+	ovpnClientsExpired.Set(float64(expiredCerts))
+	ovpnClientsConnected.Set(float64(connectedUsers))
+
 	return users
 }
 
-func userCreate(username string) (bool, string) {
-    ucErr := ""
+func (oAdmin *OpenvpnAdmin) userCreate(username string) (bool, string) {
+    ucErr := fmt.Sprintf("User \"%s\" created", username)
     // TODO: add password for user cert . priority=low
 	if validateUsername(username) == false {
 		ucErr = fmt.Sprintf("Username \"%s\" incorrect, you can use only %s\n", username, usernameRegexp)
@@ -525,21 +708,35 @@ func userCreate(username string) (bool, string) {
 	}
 	o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && easyrsa build-client-full %s nopass", *easyrsaDirPath, username))
 	fmt.Println(o)
-	return true, fmt.Sprintf("User \"%s\" created", username)
+	if *debug {
+		log.Printf("INFO: user created: %s", username)
+	}
+	oAdmin.clients = oAdmin.usersList()
+	return true, ucErr
 }
 
-func userRevoke(username string) string {
+func (oAdmin *OpenvpnAdmin) getUserStatistic(username string) clientStatus {
+	for _, u := range oAdmin.activeClients {
+		if u.CommonName == username {
+			return u
+		}
+	}
+	return clientStatus{}
+}
+
+func (oAdmin *OpenvpnAdmin) userRevoke(username string) string {
 	if checkUserExist(username) {
 		// check certificate valid flag 'V'
 		o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && echo yes | easyrsa revoke %s && easyrsa gen-crl", *easyrsaDirPath, username))
 		crlFix()
+		oAdmin.clients = oAdmin.usersList()
 		return fmt.Sprintln(o)
 	}
 	fmt.Printf("User \"%s\" not found", username)
 	return fmt.Sprintf("User \"%s\" not found", username)
 }
 
-func userUnrevoke(username string) string {
+func (oAdmin *OpenvpnAdmin) userUnrevoke(username string) string {
 	if checkUserExist(username) {
 		// check certificate revoked flag 'R'
 		usersFromIndexTxt := indexTxtParser(fRead(*indexTxtPath))
@@ -549,18 +746,20 @@ func userUnrevoke(username string) string {
                     usersFromIndexTxt[i].Flag = "V"
                     usersFromIndexTxt[i].RevocationDate = ""
                     o := runBash(fmt.Sprintf("cd %s && cp pki/revoked/certs_by_serial/%s.crt pki/issued/%s.crt", *easyrsaDirPath, usersFromIndexTxt[i].SerialNumber, username))
-                    fmt.Println(o)
+                    //fmt.Println(o)
                     o = runBash(fmt.Sprintf("cd %s && cp pki/revoked/certs_by_serial/%s.crt pki/certs_by_serial/%s.pem", *easyrsaDirPath, usersFromIndexTxt[i].SerialNumber, usersFromIndexTxt[i].SerialNumber))
-                    fmt.Println(o)
+                    //fmt.Println(o)
                     o = runBash(fmt.Sprintf("cd %s && cp pki/revoked/private_by_serial/%s.key pki/private/%s.key", *easyrsaDirPath, usersFromIndexTxt[i].SerialNumber, username))
-                    fmt.Println(o)
+                    //fmt.Println(o)
                     o = runBash(fmt.Sprintf("cd %s && cp pki/revoked/reqs_by_serial/%s.req pki/reqs/%s.req", *easyrsaDirPath, usersFromIndexTxt[i].SerialNumber, username))
-                    fmt.Println(o)
+                    //fmt.Println(o)
                     fWrite(*indexTxtPath, renderIndexTxt(usersFromIndexTxt))
-                    fmt.Print(renderIndexTxt(usersFromIndexTxt))
+                    //fmt.Print(renderIndexTxt(usersFromIndexTxt))
                     o = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl", *easyrsaDirPath))
-                    fmt.Println(o)
+                    //fmt.Println(o)
                     crlFix()
+                    o = ""
+					fmt.Println(o)
                     break
                 }
 			}
@@ -568,6 +767,7 @@ func userUnrevoke(username string) string {
 		fWrite(*indexTxtPath, renderIndexTxt(usersFromIndexTxt))
 		fmt.Print(renderIndexTxt(usersFromIndexTxt))
 		crlFix()
+		oAdmin.clients = oAdmin.usersList()
 		return fmt.Sprintf("{\"msg\":\"User %s successfully unrevoked\"}", username)
 	}
 	return fmt.Sprintf("{\"msg\":\"User \"%s\" not found\"}", username)
@@ -579,14 +779,14 @@ func userChangePassword(username string, newPassword string) bool {
     return false
 }
 
-func ovpnMgmtRead(conn net.Conn) string {
+func (oAdmin *OpenvpnAdmin) mgmtRead(conn net.Conn) string {
 	buf := make([]byte, 32768)
 	bufLen, _ := conn.Read(buf)
 	s := string(buf[:bufLen])
 	return s
 }
 
-func mgmtConnectedUsersParser(text string) []clientStatus {
+func (oAdmin *OpenvpnAdmin) mgmtConnectedUsersParser(text string) []clientStatus {
 	var u []clientStatus
 	isClientList := false
 	isRouteTable := false
@@ -611,7 +811,20 @@ func mgmtConnectedUsersParser(text string) []clientStatus {
 		}
 		if isClientList {
 			user := strings.Split(txt, ",")
-			u = append(u, clientStatus{CommonName: user[0], RealAddress: user[1], BytesReceived: user[2], BytesSent: user[3], ConnectedSince: user[4]})
+
+			userName := user[0]
+			userAddress := user[1]
+			userBytesRecieved:= user[2]
+			userBytesSent:= user[3]
+			userConnectedSince := user[4]
+
+			userStatus := clientStatus{CommonName: userName, RealAddress: userAddress, BytesReceived: userBytesRecieved, BytesSent: userBytesSent, ConnectedSince: userConnectedSince}
+			u = append(u, userStatus)
+			bytesSent, _ := strconv.Atoi(userBytesSent)
+			bytesReceive, _ := strconv.Atoi(userBytesRecieved)
+			ovpnClientConnectionFrom.WithLabelValues(userName, userAddress).Set(float64(parseDateToUnix(ovpnStatusDateLayout, userConnectedSince)))
+			ovpnClientBytesSent.WithLabelValues(userName).Set(float64(bytesSent))
+			ovpnClientBytesReceived.WithLabelValues(userName).Set(float64(bytesReceive))
 		}
 		if isRouteTable {
 			user := strings.Split(txt, ",")
@@ -619,6 +832,7 @@ func mgmtConnectedUsersParser(text string) []clientStatus {
 				if u[i].CommonName == user[1] {
 					u[i].VirtualAddress = user[0]
 					u[i].LastRef = user[3]
+					ovpnClientConnectionInfo.WithLabelValues(user[1], user[0]).Set(float64(parseDateToUnix(ovpnStatusDateLayout, user[3])))
 					break
 				}
 			}
@@ -627,27 +841,27 @@ func mgmtConnectedUsersParser(text string) []clientStatus {
 	return u
 }
 
-func mgmtKillUserConnection(username string) {
+func (oAdmin *OpenvpnAdmin) mgmtKillUserConnection(username string) {
 	conn, err := net.Dial("tcp", *mgmtListenHost+":"+*mgmtListenPort)
 	if err != nil {
 		log.Println("ERROR: openvpn mgmt interface is not reachable")
 		return
 	}
-	ovpnMgmtRead(conn) // read welcome message
+	oAdmin.mgmtRead(conn) // read welcome message
 	conn.Write([]byte(fmt.Sprintf("kill %s\n", username)))
-	fmt.Printf("%v", ovpnMgmtRead(conn))
+	fmt.Printf("%v", oAdmin.mgmtRead(conn))
 	conn.Close()
 }
 
-func mgmtGetActiveClients() []clientStatus {
+func (oAdmin *OpenvpnAdmin) mgmtGetActiveClients() []clientStatus {
 	conn, err := net.Dial("tcp", *mgmtListenHost+":"+*mgmtListenPort)
 	if err != nil {
 		log.Println("ERROR: openvpn mgmt interface is not reachable")
 		return []clientStatus{}
 	}
-	ovpnMgmtRead(conn) // read welcome message
+	oAdmin.mgmtRead(conn) // read welcome message
 	conn.Write([]byte("status\n"))
-	activeClients := mgmtConnectedUsersParser(ovpnMgmtRead(conn))
+	activeClients := oAdmin.mgmtConnectedUsersParser(oAdmin.mgmtRead(conn))
 	conn.Close()
 	return activeClients
 }
@@ -661,11 +875,11 @@ func isUserConnected(username string, connectedUsers []clientStatus) bool {
     return false
 }
 
-func downloadCerts() bool {
+func (oAdmin *OpenvpnAdmin) downloadCerts() bool {
 	if fExist(certsArchivePath) {
 		fDelete(certsArchivePath)
 	}
-    err := fDownload(certsArchivePath, *masterHost + downloadCertsApiUrl + "?token=" + *masterSyncToken, masterHostBasicAuth)
+    err := fDownload(certsArchivePath, *masterHost + downloadCertsApiUrl + "?token=" + oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
     if err != nil {
 		log.Println(err)
 		return false
@@ -674,12 +888,12 @@ func downloadCerts() bool {
 	return true
 }
 
-func downloadCcd() bool {
+func (oAdmin *OpenvpnAdmin) downloadCcd() bool {
 	if fExist(ccdArchivePath) {
 		fDelete(ccdArchivePath)
 	}
 
-	err := fDownload(ccdArchivePath, *masterHost + downloadCcdApiUrl + "?token=" + *masterSyncToken, masterHostBasicAuth)
+	err := fDownload(ccdArchivePath, *masterHost + downloadCcdApiUrl + "?token=" + oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
 	if err != nil {
 		log.Println(err)
 		return false
@@ -710,19 +924,17 @@ func unArchiveCcd() {
 	fmt.Println(o)
 }
 
-func syncDataFromMaster() {
-	log.Println("Downloading archives from master")
+func (oAdmin *OpenvpnAdmin) syncDataFromMaster() {
 	retryCountMax := 3
-
 	certsDownloadFailed := true
 	ccdDownloadFailed := true
-
 	certsDownloadRetries := 0
 	ccdDownloadRetries := 0
 
 	for certsDownloadFailed && certsDownloadRetries < retryCountMax {
 		certsDownloadRetries += 1
-		if downloadCerts() {
+		log.Printf("Downloading certs archive from master. Attempt %d", certsDownloadRetries)
+		if oAdmin.downloadCerts() {
 			certsDownloadFailed = false
 			log.Println("Decompression certs archive from master")
 			unArchiveCerts()
@@ -733,7 +945,8 @@ func syncDataFromMaster() {
 
 	for ccdDownloadFailed && ccdDownloadRetries < retryCountMax {
 		ccdDownloadRetries += 1
-		if downloadCcd() {
+		log.Printf("Downloading ccd archive from master. Attempt %d", ccdDownloadRetries)
+		if oAdmin.downloadCcd() {
 			ccdDownloadFailed = false
 			log.Println("Decompression ccd archive from master")
 			unArchiveCcd()
@@ -742,24 +955,41 @@ func syncDataFromMaster() {
 		}
 	}
 
-	lastSyncTime = time.Now().Format("2006-01-02 15:04:05")
+	oAdmin.lastSyncTime = time.Now().Format("2006-01-02 15:04:05")
 	if !ccdDownloadFailed && !certsDownloadFailed {
-		lastSuccessfulSyncTime = time.Now().Format("2006-01-02 15:04:05")
+		oAdmin.lastSuccessfulSyncTime = time.Now().Format("2006-01-02 15:04:05")
 	}
 }
 
-func syncWithMaster() {
+func (oAdmin *OpenvpnAdmin) syncWithMaster() {
     for {
 		time.Sleep(time.Duration(*masterSyncFrequency) * time.Second)
-		syncDataFromMaster()
+		oAdmin.syncDataFromMaster()
     }
+}
+
+func getOpvnCaCertExpireDate() time.Time {
+	caCertPath := *easyrsaDirPath + "/pki/ca.crt"
+	caCertExpireDate := runBash(fmt.Sprintf("openssl x509 -in %s -noout -enddate | awk -F \"=\" {'print $2'}", caCertPath))
+
+	dateLayout := "Jan 2 15:04:05 2006 MST"
+	t, err := time.Parse(dateLayout, strings.TrimSpace(caCertExpireDate))
+	if err != nil {
+		log.Printf("WARNING: can`t parse expire date for CA cert: %v", err)
+		return time.Now()
+	}
+
+	return t
 }
 
 // https://community.openvpn.net/openvpn/ticket/623
 func crlFix() {
-	os.Chmod(*easyrsaDirPath + "/pki", 0755)
-	err := os.Chmod(*easyrsaDirPath + "/pki/crl.pem", 0644)
-	if err != nil {
-		log.Println(err)
+	err1 := os.Chmod(*easyrsaDirPath + "/pki", 0755)
+	if err1 != nil {
+		log.Println(err1)
+	}
+	err2 := os.Chmod(*easyrsaDirPath + "/pki/crl.pem", 0644)
+	if err2 != nil {
+		log.Println(err2)
 	}
 }
