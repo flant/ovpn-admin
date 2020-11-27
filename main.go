@@ -650,16 +650,16 @@ func (oAdmin *OpenvpnAdmin) usersList() []OpenvpnClient {
             switch {
                 case line.Flag == "V":
                     ovpnClient.AccountStatus = "Active"
-					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64((parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow) / 3600 / 24))
 					validCerts += 1
 			case line.Flag == "R":
                     ovpnClient.AccountStatus = "Revoked"
                     ovpnClient.RevocationDate = parseDateToString(indexTxtDateLayout, line.RevocationDate, stringDateFormat)
-					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64((parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow) / 3600 / 24))
 					revokedCerts += 1
                 case line.Flag == "E":
                     ovpnClient.AccountStatus = "Expired"
-					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64(parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow / 3600 / 24))
+					ovpnClientCertificateExpire.WithLabelValues(line.Identity).Set(float64((parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow) / 3600 / 24))
 					expiredCerts += 1
             }
 
@@ -671,7 +671,7 @@ func (oAdmin *OpenvpnAdmin) usersList() []OpenvpnClient {
             users = append(users, ovpnClient)
 
         } else {
-			ovpnServerCertExpire.Set(float64(parseDateToUnix(indexTxtDateLayout,line.ExpirationDate) - apochNow / 3600 / 24))
+			ovpnServerCertExpire.Set(float64((parseDateToUnix(indexTxtDateLayout, line.ExpirationDate) - apochNow) / 3600 / 24))
 		}
 	}
 
