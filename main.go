@@ -415,7 +415,7 @@ func (oAdmin *OpenvpnAdmin) setState() {
 	oAdmin.activeClients = oAdmin.mgmtGetActiveClients()
 	oAdmin.clients = oAdmin.usersList()
 
-	ovpnServerCaCertExpire.Set(float64(getOpvnCaCertExpireDate().Unix() - time.Now().Unix() / 3600 / 24))
+	ovpnServerCaCertExpire.Set(float64((getOpvnCaCertExpireDate().Unix() - time.Now().Unix()) / 3600 / 24))
 }
 
 func (oAdmin *OpenvpnAdmin) updateState() {
