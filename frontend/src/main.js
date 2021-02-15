@@ -55,6 +55,11 @@ new Vue({
         filterable: true,
       },
       {
+        label: 'Connection Server',
+        field: 'ConnectionServer',
+        filterable: true,
+      },
+      {
         label: 'Expiration Date',
         field: 'ExpirationDate',
         type: 'date',
@@ -85,38 +90,51 @@ new Vue({
     rows: [],
     actions: [
       {
+        name: 'u-change-password',
+        label: 'Change password',
+        class: 'btn-warning',
+        showWhenStatus: 'Active',
+        showForServerRole: ['master']
+      },
+      {
         name: 'u-revoke',
         label: 'Revoke',
+        class: 'btn-warning',
         showWhenStatus: 'Active',
         showForServerRole: ['master']
       },
       {
         name: 'u-unrevoke',
         label: 'Unrevoke',
+        class: 'btn-primary',
         showWhenStatus: 'Revoked',
         showForServerRole: ['master']
       },
-      {
-        name: 'u-show-config',
-        label: 'Show config',
-        showWhenStatus: 'Active',
-        showForServerRole: ['master', 'slave']
-      },
+      // {
+      //   name: 'u-show-config',
+      //   label: 'Show config',
+      //   class: 'btn-primary',
+      //   showWhenStatus: 'Active',
+      //   showForServerRole: ['master', 'slave']
+      // },
       {
         name: 'u-download-config',
         label: 'Download config',
+        class: 'btn-info',
         showWhenStatus: 'Active',
         showForServerRole: ['master', 'slave']
       },
       {
         name: 'u-edit-ccd',
         label: 'Edit routes',
+        class: 'btn-primary',
         showWhenStatus: 'Active',
         showForServerRole: ['master']
       },
       {
         name: 'u-edit-ccd',
         label: 'Show routes',
+        class: 'btn-primary',
         showWhenStatus: 'Active',
         showForServerRole: ['slave']
       }
@@ -128,11 +146,15 @@ new Vue({
     lastSync: "unknown",
     u: {
       newUserName: '',
-//      newUserPassword: 'nopass',
+      newUserPassword: '',
       newUserCreateError: '',
+      newPassword: '',
+      passwordChangeStatus: '',
+      passwordChangeMessage: '',
       modalNewUserVisible: false,
       modalShowConfigVisible: false,
       modalShowCcdVisible: false,
+      modalChangePasswordVisible: false,
       openvpnConfig: '',
       ccd: {
         Name: '',
@@ -210,6 +232,11 @@ new Vue({
         console.log(response.data);
       });
     })
+    _this.$root.$on('u-change-password', function () {
+      _this.u.modalChangePasswordVisible = true;
+      var data = new URLSearchParams();
+      data.append('username', _this.username);
+    })
   },
   computed: {
     customAddressDisabled: function () {
@@ -217,6 +244,9 @@ new Vue({
     },
     ccdApplyStatusCssClass: function () {
         return this.u.ccdApplyStatus == 200 ? "alert-success" : "alert-danger"
+    },
+    passwordChangeStatusCssClass: function () {
+      return this.u.passwordChangeStatus == 200 ? "alert-success" : "alert-danger"
     },
     modalNewUserDisplay: function () {
       return this.u.modalNewUserVisible ? {display: 'flex'} : {}
@@ -226,6 +256,9 @@ new Vue({
     },
     modalShowCcdDisplay: function () {
       return this.u.modalShowCcdVisible ? {display: 'flex'} : {}
+    },
+    modalChangePasswordDisplay: function () {
+      return this.u.modalChangePasswordVisible ? {display: 'flex'} : {}
     },
     revokeFilterText: function() {
       return this.filters.hideRevoked ? "Show revoked" : "Hide revoked"
@@ -269,6 +302,7 @@ new Vue({
         }
       });
     },
+
     createUser: function() {
       var _this = this;
 
@@ -276,19 +310,20 @@ new Vue({
 
       var data = new URLSearchParams();
       data.append('username', _this.u.newUserName);
-//      data.append('password', this.u.newUserPassword);
+      data.append('password', _this.u.newUserPassword);
 
       axios.request(axios_cfg('api/user/create', data, 'form'))
       .then(function(response) {
-        _this.getUserData();
         _this.u.modalNewUserVisible = false;
         _this.u.newUserName = '';
-//        _this.u.newUserPassword = 'nopass';
+        _this.u.newUserPassword = '';
+        _this.getUserData();
       })
       .catch(function(error) {
         _this.u.newUserCreateError = error.response.data;
       });
     },
+
     ccdApply: function() {
       var _this = this;
 
@@ -304,6 +339,30 @@ new Vue({
         _this.u.ccdApplyStatus = error.response.status;
         _this.u.ccdApplyStatusMessage = error.response.data;
       });
-    }
+    },
+
+    changeUserPassword: function(user) {
+      var _this = this;
+
+      _this.u.passwordChangeMessage = "";
+
+      var data = new URLSearchParams();
+      data.append('username', user);
+      data.append('password', _this.u.newPassword);
+
+      axios.request(axios_cfg('api/user/change-password', data, 'form'))
+        .then(function(response) {
+          _this.u.passwordChangeStatus = 200;
+          _this.u.newPassword = '';
+          _this.u.passwordChangeMessage = response.data.message;
+          _this.getUserData();
+          _this.u.modalChangePasswordVisible = false;
+        })
+        .catch(function(error) {
+          _this.u.passwordChangeStatus = error.response.status;
+          _this.u.passwordChangeMessage = error.response.data.message;
+        });
+    },
   }
+
 })

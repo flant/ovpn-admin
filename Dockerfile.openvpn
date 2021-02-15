@@ -1,6 +1,9 @@
-FROM alpine:3.11
-RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing/" >> /etc/apk/repositories && \
-    apk add --update bash openvpn easy-rsa  && \
+FROM golang:1.14.2-buster AS user-builder
+RUN git clone https://github.com/pashcovich/openvpn-user /app && cd /app && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-linkmode external -extldflags "-static" -s -w' -o openvpn-user
+
+FROM alpine:3.13
+COPY --from=user-builder /app/openvpn-user /usr/local/bin
+RUN apk add --update bash openvpn easy-rsa  && \
     ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
 COPY .werffiles /etc/openvpn/setup

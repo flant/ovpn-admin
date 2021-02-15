@@ -16,3 +16,6 @@ frontend/node_modules
 openvpn-web-ui
 openvpn-ui
 openvpn-admin
+
+docker-compose.yaml
+docker-compose-slave.yaml
