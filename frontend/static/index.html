@@ -89,7 +89,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="changeUserPassword(username)">Change password</button>
-          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.modalChangePasswordVisible=false">Close</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.passwordChangeMessage='';u.modalChangePasswordVisible=false">Close</button>
         </div>
       </div>
     </div>
@@ -127,10 +127,10 @@
             <h5 class="static-address-label ">Static address:</h5>
             <div class="input-group-prepend">
               <div class="input-group-text">
-                <input id="enable-static" type="checkbox" onchange="document.getElementById('staticAddress').disabled=!this.checked;" v-if="serverRole == 'master'" v-bind:checked="!customAddressDisabled">
+                <input id="enable-static" type="checkbox" @change="staticAddrCheckboxOnChange()" v-if="serverRole == 'master'" v-bind:checked="!customAddressDisabled">
               </div>
             </div>
-            <input id="staticAddress" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
+            <input id="static-address" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
           </div>
         </div>
         <div class="modal-body">
@@ -147,22 +147,22 @@
               <tbody>
                 <tr v-for="(customRoute, index) in u.ccd.CustomRoutes">
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                       {{ customRoute.Address }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Address">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Address">
                   </td>
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                     {{ customRoute.Mask }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Mask">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Mask">
                   </td>
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                     {{ customRoute.Description }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Description">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Description">
                   </td>
                   <td class="text-right" v-if="serverRole == 'master'">
                       <button type="button" class="btn btn-danger btn-sm el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
@@ -193,6 +193,7 @@
     </div>
   </div>
 
+  <notifications position="bottom left" :speed="900" />
 </div>
 <script src="dist/build.js"></script>
 </body>

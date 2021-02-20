@@ -3,12 +3,14 @@ import axios from 'axios';
 import VueCookies from 'vue-cookies'
 import VueClipboard from 'vue-clipboard2'
 import VueGoodTablePlugin from 'vue-good-table'
+import Notifications from 'vue-notification'
 
 import 'vue-good-table/dist/vue-good-table.css'
 
 Vue.use(VueClipboard)
 Vue.use(VueGoodTablePlugin)
 Vue.use(VueCookies)
+Vue.use(Notifications)
 
 var axios_cfg = function(url, data='', type='form') {
   if (data == '') {
@@ -182,6 +184,7 @@ new Vue({
       axios.request(axios_cfg('api/user/revoke', data, 'form'))
       .then(function(response) {
         _this.getUserData();
+        _this.$notify({title: 'User ' + _this.username + ' revoked!', type: 'warn'})
       });
     })
     _this.$root.$on('u-unrevoke', function () {
@@ -190,6 +193,7 @@ new Vue({
       axios.request(axios_cfg('api/user/unrevoke', data, 'form'))
       .then(function(response) {
         _this.getUserData();
+        _this.$notify({title: 'User ' + _this.username + ' unrevoked!', type: 'success'})
       });
     })
     _this.$root.$on('u-show-config', function () {
@@ -289,6 +293,15 @@ new Vue({
           _this.rows = response.data;
         });
     },
+
+    staticAddrCheckboxOnChange: function() {
+      var staticAddrInput = document.getElementById('static-address');
+      var staticAddrEnable = document.getElementById('enable-static');
+
+      staticAddrInput.disabled = !staticAddrEnable.checked;
+      staticAddrInput.value == "dynamic" ? staticAddrInput.value = "" : staticAddrInput.value = "dynamic";
+    },
+
     getServerRole: function() {
       var _this = this;
       axios.request(axios_cfg('api/server/role'))
@@ -318,9 +331,12 @@ new Vue({
         _this.u.newUserName = '';
         _this.u.newUserPassword = '';
         _this.getUserData();
+        _this.$notify({title: 'New user ' + _this.username + ' created', type: 'success'})
       })
       .catch(function(error) {
         _this.u.newUserCreateError = error.response.data;
+        _this.$notify({title: 'New user ' + _this.username + ' creation failed.', type: 'error'})
+
       });
     },
 
@@ -334,10 +350,12 @@ new Vue({
       .then(function(response) {
         _this.u.ccdApplyStatus = 200;
         _this.u.ccdApplyStatusMessage = response.data;
+        _this.$notify({title: 'Ccd for user ' + _this.username + ' applied', type: 'success'})
       })
       .catch(function(error) {
         _this.u.ccdApplyStatus = error.response.status;
         _this.u.ccdApplyStatusMessage = error.response.data;
+        _this.$notify({title: 'Ccd for user ' + _this.username + ' apply failed ', type: 'error'})
       });
     },
 
@@ -354,13 +372,14 @@ new Vue({
         .then(function(response) {
           _this.u.passwordChangeStatus = 200;
           _this.u.newPassword = '';
-          _this.u.passwordChangeMessage = response.data.message;
           _this.getUserData();
           _this.u.modalChangePasswordVisible = false;
+          _this.$notify({title: 'Password for user ' + _this.username + ' changed!', type: 'success'})
         })
         .catch(function(error) {
           _this.u.passwordChangeStatus = error.response.status;
           _this.u.passwordChangeMessage = error.response.data.message;
+          _this.$notify({title: 'Changing password for user ' + _this.username + ' failed!', type: 'error'})
         });
     },
   }

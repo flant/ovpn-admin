@@ -1,5 +1,5 @@
 {{- range $server := .Hosts }}
-remote {{ $server.Host }} {{ $server.Port }} tcp
+remote {{ $server.Host }} {{ $server.Port }} {{ $server.Protocol }}
 {{- end }}
 
 verb 4

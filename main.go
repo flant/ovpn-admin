@@ -30,10 +30,10 @@ const (
 	indexTxtDateLayout = "060102150405Z"
 	stringDateFormat = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "Mon Jan 2 15:04:05 2006"
+	version = "1.5.0"
 )
 
 var (
-
 	listenHost      		= kingpin.Flag("listen.host","host for openvpn-admin").Default("0.0.0.0").String()
 	listenPort      		= kingpin.Flag("listen.port","port for openvpn-admin").Default("8080").String()
     serverRole              = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
@@ -42,10 +42,9 @@ var (
 	masterBasicAuthPassword = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
 	masterSyncFrequency     = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
 	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Default("justasimpleword").PlaceHolder("TOKEN").String()
-	openvpnServer      		= kingpin.Flag("ovpn.host","host(s) for openvpn server").Default("127.0.0.1:7777").PlaceHolder("HOST:PORT").Strings()
+	openvpnServer      		= kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777").PlaceHolder("HOST:PORT").Strings()
 	openvpnNetwork          = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
-	mgmtAddress		    	= kingpin.Flag("mgmt","comma separated (alias=addresses) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
-	//mgmtListenPort          = kingpin.Flag("mgmt.port","port for openvpn server mgmt interface").Default("8989").String()
+	mgmtAddress		    	= kingpin.Flag("mgmt","comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
 	metricsPath 			= kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
 	easyrsaDirPath     		= kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("/mnt/easyrsa").String()
 	indexTxtPath    		= kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("/mnt/easyrsa/pki/index.txt").String()
@@ -152,6 +151,7 @@ type OpenvpnAdmin struct {
 type OpenvpnServer struct {
 	Host string
 	Port  string
+	Protocol string
 }
 
 type openvpnClientConfig struct {
@@ -366,7 +366,9 @@ func (oAdmin *OpenvpnAdmin) downloadCcdHandler(w http.ResponseWriter, r *http.Re
 }
 
 func main() {
-    kingpin.Parse()
+	kingpin.Version(version)
+	kingpin.Parse()
+
 
 	ovpnAdmin := new(OpenvpnAdmin)
 	ovpnAdmin.lastSyncTime = "unknown"
@@ -506,8 +508,8 @@ func (oAdmin *OpenvpnAdmin) renderClientConfig(username string) string {
 		var hosts []OpenvpnServer
 
 		for _, server := range *openvpnServer {
-			parts := strings.SplitN(server, ":",2)
-			hosts = append(hosts, OpenvpnServer{Host: parts[0], Port: parts[1]})
+			parts := strings.SplitN(server, ":",3)
+			hosts = append(hosts, OpenvpnServer{Host: parts[0], Port: parts[1], Protocol: parts[2]})
 		}
 
 		conf := openvpnClientConfig{}
@@ -947,7 +949,7 @@ func (oAdmin *OpenvpnAdmin) mgmtConnectedUsersParser(text, serverName string) []
 func (oAdmin *OpenvpnAdmin) mgmtKillUserConnection(username, serverName string) {
 	conn, err := net.Dial("tcp", oAdmin.mgmtInterfaces[serverName])
 	if err != nil {
-		log.Println("ERROR: openvpn mgmt interface is not reachable")
+		log.Printf("WARNING: openvpn mgmt interface for %s is not reachable by addr %s\n", serverName, oAdmin.mgmtInterfaces[serverName])
 		return
 	}
 	oAdmin.mgmtRead(conn) // read welcome message
@@ -962,8 +964,8 @@ func (oAdmin *OpenvpnAdmin) mgmtGetActiveClients() []clientStatus {
 	for srv, addr := range oAdmin.mgmtInterfaces {
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
-			log.Printf("ERROR: openvpn mgmt interface for %s is not reachable by addr %s\n", srv, addr)
-			//return []clientStatus{}
+			log.Printf("WARNING: openvpn mgmt interface for %s is not reachable by addr %s\n", srv, addr)
+			break
 		}
 		oAdmin.mgmtRead(conn) // read welcome message
 		conn.Write([]byte("status\n"))
