@@ -30,7 +30,7 @@ const (
 	indexTxtDateLayout = "060102150405Z"
 	stringDateFormat = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "Mon Jan 2 15:04:05 2006"
-	version = "1.5.0"
+	version = "1.5.0-fix.1"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 	masterBasicAuthPassword = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
 	masterSyncFrequency     = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
 	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Default("justasimpleword").PlaceHolder("TOKEN").String()
-	openvpnServer      		= kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777").PlaceHolder("HOST:PORT").Strings()
+	openvpnServer      		= kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
 	openvpnNetwork          = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
 	mgmtAddress		    	= kingpin.Flag("mgmt","comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
 	metricsPath 			= kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
