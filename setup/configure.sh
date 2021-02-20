@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -x
+set -ex
 
 EASY_RSA_LOC="/etc/openvpn/easyrsa"
 SERVER_CERT="${EASY_RSA_LOC}/pki/issued/server.crt"
@@ -34,10 +34,20 @@ fi
 
 cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
+if [ ${OPVN_PASSWD_AUTH} = "true" ]; then
+  mkdir -p /etc/openvpn/scripts/
+  cp -f /etc/openvpn/setup/auth.sh /etc/openvpn/scripts/auth.sh
+  chmod +x /etc/openvpn/scripts/auth.sh
+  echo "auth-user-pass-verify /etc/openvpn/scripts/auth.sh via-file" | tee -a /etc/openvpn/openvpn.conf
+  echo "script-security 2" | tee -a /etc/openvpn/openvpn.conf
+  echo "verify-client-cert require" | tee -a /etc/openvpn/openvpn.conf
+  openvpn-user db-init --db.path=$EASY_RSA_LOC/pki/users.db
+fi
+
 [ -d $EASY_RSA_LOC/pki ] && chmod 755 $EASY_RSA_LOC/pki
 [ -f $EASY_RSA_LOC/pki/crl.pem ] && chmod 644 $EASY_RSA_LOC/pki/crl.pem
 
 mkdir -p /etc/openvpn/ccd
 
-openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd
+openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd --port 1194 --proto tcp --management 127.0.0.1 8989
 

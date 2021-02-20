@@ -1,5 +1,5 @@
 {{- range $server := .Hosts }}
-remote {{ $server.Host }} {{ $server.Port }} tcp
+remote {{ $server.Host }} {{ $server.Port }} {{ $server.Protocol }}
 {{- end }}
 
 verb 4
@@ -11,10 +11,19 @@ key-direction 1
 #redirect-gateway def1
 tls-client
 remote-cert-tls server
-# for update resolv.conf on ubuntu
-#script-security 2 system
+# uncomment needed below lines for use with linux
+#script-security 2
+# if use use resolved
 #up /etc/openvpn/update-resolv-conf
 #down /etc/openvpn/update-resolv-conf
+# if you use systemd-resolved first install and openvpn-systemd-resolved package
+#up /etc/openvpn/update-systemd-resolved
+#down /etc/openvpn/update-systemd-resolved
+
+{{- if .PasswdAuth }}
+auth-user-pass
+{{- end }}
+
 <cert>
 {{ .Cert -}}
 </cert>

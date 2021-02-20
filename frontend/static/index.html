@@ -28,7 +28,7 @@
     <template slot="table-row" slot-scope="props">
       <span v-if="props.column.field == 'actions'">
         <button
-          class="btn btn-sm btn-success el-square modal-el-margin"
+          class="btn btn-sm el-square modal-el-margin"
           type="button"
           :title="action.label"
           :data-username="props.row.Identity"
@@ -36,6 +36,7 @@
           :data-text="action.label"
           @click.left.stop="rowActionFn"
           v-for="action in actions"
+          v-bind:class="action.class"
           v-if="action.showWhenStatus == props.row.AccountStatus && action.showForServerRole.includes(serverRole)">
           {{ action.label }}
         </button>
@@ -51,11 +52,11 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
         <div class="modal-header">
-          <h4>Add new user </h4>
+          <h4>Add new user</h4>
         </div>
         <div class="modal-body">
           <input type="text" class="form-control el-square modal-el-margin" placeholder="Username [_a-zA-Z0-9\.-]" v-model="u.newUserName">
-<!--          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword">-->
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword">
         </div>
 
         <div class="modal-footer justify-content-center" v-if="u.newUserCreateError.length > 0">
@@ -64,8 +65,31 @@
           </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="createUser();">Create</button>
+            <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="createUser()">Create</button>
             <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newUserName='';u.newUserPassword='nopass';u.modalNewUserVisible=false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-wrapper" v-if="u.modalChangePasswordVisible" v-bind:style="modalChangePasswordDisplay">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>Change password for: <strong>{{ username }}</strong></h4>
+        </div>
+        <div class="modal-body">
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newPassword">
+        </div>
+
+        <div class="modal-footer justify-content-center" v-if="u.passwordChangeMessage.length > 0">
+          <div class="alert" v-bind:class="passwordChangeStatusCssClass" role="alert" >
+            {{ u.passwordChangeMessage }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="changeUserPassword(username)">Change password</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.passwordChangeMessage='';u.modalChangePasswordVisible=false">Close</button>
         </div>
       </div>
     </div>
@@ -75,7 +99,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h4>ovpn config for {{ username }}</h4>
+          <h4>ovpn config for: <strong>{{ username }}</strong></h4>
         </div>
         <div class="modal-body">
           <div class="d-flex">
@@ -96,16 +120,18 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
+          <h3 class="static-address-label ">Routes table for: <strong>{{ username }}</strong></h3>
+        </div>
+        <div class="modal-body">
           <div class="input-group">
-            <h4 class="static-address-label ">Client "{{ username }}" static address</h4>
+            <h5 class="static-address-label ">Static address:</h5>
             <div class="input-group-prepend">
               <div class="input-group-text">
-                <input id="enable-static" type="checkbox" onchange="document.getElementById('staticAddress').disabled=!this.checked;" v-if="serverRole == 'master'" v-bind:checked="customAddressDisabled">
+                <input id="enable-static" type="checkbox" @change="staticAddrCheckboxOnChange()" v-if="serverRole == 'master'" v-bind:checked="!customAddressDisabled">
               </div>
             </div>
-            <input id="staticAddress" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
+            <input id="static-address" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
           </div>
-
         </div>
         <div class="modal-body">
           <div class="d-flex ">
@@ -121,22 +147,22 @@
               <tbody>
                 <tr v-for="(customRoute, index) in u.ccd.CustomRoutes">
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                       {{ customRoute.Address }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Address">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Address">
                   </td>
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                     {{ customRoute.Mask }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Mask">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Mask">
                   </td>
                   <td>
-                    <div v-if = "serverRole == 'slave'">
+                    <div v-if="serverRole == 'slave'">
                     {{ customRoute.Description }}
                     </div>
-                    <input v-if = "serverRole == 'master'" v-model = "customRoute.Description">
+                    <input v-if="serverRole == 'master'" v-model="customRoute.Description">
                   </td>
                   <td class="text-right" v-if="serverRole == 'master'">
                       <button type="button" class="btn btn-danger btn-sm el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="u.ccd.CustomRoutes.splice(index, 1)">Delete</button>
@@ -167,6 +193,7 @@
     </div>
   </div>
 
+  <notifications position="bottom left" :speed="900" />
 </div>
 <script src="dist/build.js"></script>
 </body>

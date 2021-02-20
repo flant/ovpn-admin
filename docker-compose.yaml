@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile.openvpn
     image: openvpn:local
     command: /etc/openvpn/setup/configure.sh
+    environment:
+      - OPVN_PASSWD_AUTH=true
     cap_add:
       - NET_ADMIN
     ports:
@@ -19,7 +21,7 @@ services:
     build:
       context: .
     image: openvpn-admin:local
-    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --master.sync-token="TOKEN"
+    command: /app/openvpn-admin --debug --ovpn.network="172.16.100.0/22" --master.sync-token="TOKEN" --auth.password
     network_mode: service:openvpn
     volumes:
       - ./easyrsa_master:/mnt/easyrsa
