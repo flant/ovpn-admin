@@ -29,8 +29,8 @@ const (
 	ccdArchiveFileName = "ccd.tar.gz"
 	indexTxtDateLayout = "060102150405Z"
 	stringDateFormat = "2006-01-02 15:04:05"
-	ovpnStatusDateLayout = "Mon Jan 2 15:04:05 2006"
-	version = "1.5.0-fix.1"
+	ovpnStatusDateLayout = "2006-01-02 15:04:05"
+	version = "1.5.1"
 )
 
 var (
