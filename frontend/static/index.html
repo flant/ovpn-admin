@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>openvpn-admin</title>
-  <link rel="stylesheet" href="css/normalize.css">
-  <link rel="stylesheet" href="css/bootstrap.min.css">
-  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<script src="dist/style.min.js"></script>
 <div id="app">
   <vue-good-table
     :columns="columns"
@@ -37,7 +35,7 @@
           @click.left.stop="rowActionFn"
           v-for="action in actions"
           v-bind:class="action.class"
-          v-if="action.showWhenStatus == props.row.AccountStatus && action.showForServerRole.includes(serverRole)">
+          v-if="action.showWhenStatus == props.row.AccountStatus && action.showForServerRole.includes(serverRole) && action.showForModule.some(p=> modulesEnabled.includes(p))">
           {{ action.label }}
         </button>
       </span>
@@ -135,7 +133,7 @@
         </div>
         <div class="modal-body">
           <div class="d-flex ">
-            <table class="table table-bordered table-hover">
+            <table class="table table-bordered table-hover ccd-routes" >
               <thead>
                 <tr>
                   <th scope="col">Address</th>
@@ -195,6 +193,6 @@
 
   <notifications position="bottom left" :speed="900" />
 </div>
-<script src="dist/build.js"></script>
+<script src="dist/bundle.min.js"></script>
 </body>
 </html>
