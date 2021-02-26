@@ -4,8 +4,11 @@ Web UI for manage and admin openvpn users
 
 ## Install
 
-### docker
+### disclaimer
 
+Because this utility uses external calls for `bash`, `core-utils` and `easyrsa` it can work only on Linux systems
+
+### docker
 
 We have [docker-compose.yaml](https://github.com/flant/openvpn-admin/blob/master/docker-compose.yaml) you can just change/add values you need and start it with [start.sh](https://github.com/flant/openvpn-admin/blob/master/start.sh)
 
