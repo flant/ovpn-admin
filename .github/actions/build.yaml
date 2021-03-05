@@ -1,0 +1,25 @@
+name: Build and publish to Docker Hub (tags only)
+on:
+  push:
+    tags:
+    - *
+jobs:
+  build:
+    name: Converge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Docker login
+        run: |
+          echo "${{ secrets.DOCKER_PASS }}" | docker login -u ${{ secrets.DOCKER_PASS }} --password-stdin
+      - name: Converge
+        uses: werf/actions/converge@master
+        with:
+          group: 1.1
+          channel: beta
+        env:
+          WERF_STAGES_STORAGE=REPO
+          WERF_REPO: ${{ secrets.REGISTRY }}/${{ github.repository }}
