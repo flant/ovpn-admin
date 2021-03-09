@@ -24,4 +24,5 @@ jobs:
           channel: beta
         env:
           WERF_STAGES_STORAGE: ":local"
-          WERF_REPO: ${{ secrets.REGISTRY }}
+          WERF_IMAGES_REPO: ${{ secrets.REGISTRY }}
+          WERF_REPO_IMPLEMENTATION: dockerhub
