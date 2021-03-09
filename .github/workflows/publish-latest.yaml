@@ -26,3 +26,4 @@ jobs:
           WERF_STAGES_STORAGE: ":local"
           WERF_IMAGES_REPO: ${{ secrets.REGISTRY }}
           WERF_REPO_IMPLEMENTATION: dockerhub
+          WERF_TAG_GIT_TAG: "latest"

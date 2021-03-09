@@ -1,0 +1,33 @@
+name: Build and publish to Docker Hub (tags only)
+on:
+  push:
+    tags:
+      - '*'
+    
+jobs:
+  build:
+    name: Converge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Docker login
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - name: Converge
+        uses: werf/actions/build-and-publish@master
+        with:
+          group: 1.1
+          channel: beta
+        env:
+          WERF_STAGES_STORAGE: ":local"
+          WERF_IMAGES_REPO: ${{ secrets.REGISTRY }}
+          WERF_REPO_IMPLEMENTATION: dockerhub
+          WERF_TAG_GIT_TAG: ${{ steps.get_version.outputs.VERSION }}
