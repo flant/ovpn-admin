@@ -5,29 +5,26 @@ on:
     
 jobs:
   build:
-    name: Converge
+    name: build latest images for relase
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Docker login
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
       - name: Push openvpn image to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          tags: flant/openvpn-admin:openvpn-latest
-          context: .
-          file:  Dockerfile.openvpn
-          push: true
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+          repository: flant/openvpn-admin
+          tags: openvpn-latest
+          dockerfile:  Dockerfile.openvpn
       - name: Push openvpn-admin image to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          tags: flant/openvpn-admin:latest
-          file: Dockerfile
-          context: .
-          push: true
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+          repository: flant/openvpn-admin
+          tags: latest
+          dockerfile: Dockerfile

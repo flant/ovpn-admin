@@ -6,33 +6,29 @@ on:
     
 jobs:
   build:
-    name: Converge
+    name: build images for tag
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - name: Docker login
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
       - name: Push openvpn image to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          tags: flant/openvpn-admin:openvpn-${{ steps.get_version.outputs.VERSION }}
-          context: .
-          file:  Dockerfile.openvpn
-          push: true
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+          repository: flant/openvpn-admin
+          tags: openvpn-${{ steps.get_version.outputs.VERSION }}
+          dockerfile:  Dockerfile.openvpn
       - name: Push openvpn-admin image to Docker Hub
         uses: docker/build-push-action@v1
         with:
-          tags: flant/openvpn-admin:${{ steps.get_version.outputs.VERSION }}
-          file: Dockerfile
-          context: .
-          push: true
-
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+          repository: flant/openvpn-admin
+          tags: ${{ steps.get_version.outputs.VERSION }}
+          dockerfile: Dockerfile
