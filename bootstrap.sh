@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir -p easyrsa
+mkdir -p {easyrsa,ccd}
 
 cd easyrsa
 

@@ -17,6 +17,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/gobuffalo/packr/v2"
 )
 
 const (
@@ -30,7 +32,7 @@ const (
 	indexTxtDateLayout = "060102150405Z"
 	stringDateFormat = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "2006-01-02 15:04:05"
-	version = "1.5.1"
+	version = "1.6.0"
 )
 
 var (
@@ -41,17 +43,17 @@ var (
 	masterBasicAuthUser		= kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").String()
 	masterBasicAuthPassword = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
 	masterSyncFrequency     = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
-	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Default("justasimpleword").PlaceHolder("TOKEN").String()
-	openvpnServer      		= kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
+	masterSyncToken         = kingpin.Flag("master.sync-token", "master host data sync security token").Default("VerySecureToken").PlaceHolder("TOKEN").String()
 	openvpnNetwork          = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
+	openvpnServer      		= kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
 	mgmtAddress		    	= kingpin.Flag("mgmt","comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
 	metricsPath 			= kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
-	easyrsaDirPath     		= kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("/mnt/easyrsa").String()
-	indexTxtPath    		= kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("/mnt/easyrsa/pki/index.txt").String()
-	ccdDir          		= kingpin.Flag("ccd.path", "path to client-config-dir").Default("/mnt/ccd").String()
+	easyrsaDirPath     		= kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").String()
+	indexTxtPath    		= kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("./easyrsa/pki/index.txt").String()
+	ccdEnabled  			= kingpin.Flag("ccd", "Enable client-config-dir.").Default("false").Bool()
+	ccdDir          		= kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").String()
 	authByPassword 			= kingpin.Flag("auth.password", "Enable additional password authorization.").Default("false").Bool()
-	authDatabase 			= kingpin.Flag("auth.db", "Database path fort password authorization.").Default("/mnt/easyrsa/pki/users.db").String()
-	staticPath      		= kingpin.Flag("static.path", "path to static dir").Default("./static").String()
+	authDatabase 			= kingpin.Flag("auth.db", "Database path fort password authorization.").Default("./easyrsa/pki/users.db").String()
 	debug           		= kingpin.Flag("debug", "Enable debug mode.").Default("false").Bool()
 	verbose           		= kingpin.Flag("verbose", "Enable verbose mode.").Default("false").Bool()
 
@@ -145,8 +147,9 @@ type OpenvpnAdmin struct {
 	activeClients []clientStatus
 	promRegistry *prometheus.Registry
 	mgmtInterfaces map[string]string
+	templates *packr.Box
+	modules []string
 }
-
 
 type OpenvpnServer struct {
 	Host string
@@ -317,8 +320,12 @@ func (oAdmin *OpenvpnAdmin) userApplyCcdHandler(w http.ResponseWriter, r *http.R
     }
 }
 
-func (oAdmin *OpenvpnAdmin) serverRoleHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, `{"status":"ok", "serverRole": "%s" }`, oAdmin.role)
+func (oAdmin *OpenvpnAdmin) serverSettingsHandler(w http.ResponseWriter, r *http.Request) {
+	enabledModules, enabledModulesErr := json.Marshal(oAdmin.modules)
+	if enabledModulesErr != nil {
+		log.Printf("ERROR: %s\n",enabledModulesErr)
+	}
+	fmt.Fprintf(w, `{"status":"ok", "serverRole": "%s", "modules": %s }`, oAdmin.role, string(enabledModules))
 }
 
 func (oAdmin *OpenvpnAdmin) lastSyncTimeHandler(w http.ResponseWriter, r *http.Request) {
@@ -376,6 +383,7 @@ func main() {
 	ovpnAdmin.lastSuccessfulSyncTime = "unknown"
 	ovpnAdmin.masterSyncToken = *masterSyncToken
 	ovpnAdmin.promRegistry = prometheus.NewRegistry()
+	ovpnAdmin.modules = []string{}
 
 	ovpnAdmin.mgmtInterfaces = make(map[string]string)
 
@@ -395,15 +403,28 @@ func main() {
 		ovpnAdmin.masterHostBasicAuth = false
 	}
 
+	ovpnAdmin.modules = append(ovpnAdmin.modules, "core")
+
+	if *authByPassword {
+		ovpnAdmin.modules = append(ovpnAdmin.modules, "passwdAuth")
+	}
+
+	if *ccdEnabled {
+		ovpnAdmin.modules = append(ovpnAdmin.modules, "ccd")
+	}
+
 	if ovpnAdmin.role == "slave" {
 		ovpnAdmin.syncDataFromMaster()
 	    go ovpnAdmin.syncWithMaster()
 	}
 
-	fs := CacheControlWrapper(http.FileServer(http.Dir(*staticPath)))
+	ovpnAdmin.templates = packr.New("template", "./templates")
 
-	http.Handle("/", fs)
-	http.HandleFunc("/api/server/role", ovpnAdmin.serverRoleHandler)
+	staticBox := packr.New("static", "./frontend/static")
+	static := CacheControlWrapper(http.FileServer(staticBox))
+
+	http.Handle("/", static)
+	http.HandleFunc("/api/server/settings", ovpnAdmin.serverSettingsHandler)
 	http.HandleFunc("/api/users/list", ovpnAdmin.userListHandler)
 	http.HandleFunc("/api/user/create", ovpnAdmin.userCreateHandler)
 	http.HandleFunc("/api/user/change-password", ovpnAdmin.userChangePasswordHandler)
@@ -520,7 +541,12 @@ func (oAdmin *OpenvpnAdmin) renderClientConfig(username string) string {
 		conf.TLS = fRead(*easyrsaDirPath + "/pki/ta.key")
 		conf.PasswdAuth = *authByPassword
 
-		t, _ := template.ParseFiles("client.conf.tpl")
+		clientConfigTpl, clientConfigTplErr := oAdmin.templates.FindString("client.conf.tpl")
+		if clientConfigTplErr != nil {
+			log.Println("ERROR: clientConfigTpl not found in templates box")
+		}
+
+		t := template.New(clientConfigTpl)
 		var tmp bytes.Buffer
 		err := t.Execute(&tmp, conf)
 		if err != nil {
@@ -569,7 +595,14 @@ func (oAdmin *OpenvpnAdmin) modifyCcd(ccd Ccd) (bool, string) {
 	    }
 
         if ccdValid {
-            t, _ := template.ParseFiles("ccd.tpl")
+			ccdTpl, ccdTplErr := oAdmin.templates.FindString("ccd.tpl")
+			if ccdTplErr != nil {
+				ccdErr = "ccdTpl not found in templates box"
+				log.Printf("ERROR: %s\n",ccdErr)
+				return false, ccdErr
+			}
+
+            t := template.New(ccdTpl)
             var tmp bytes.Buffer
             tplErr := t.Execute(&tmp, ccd)
 			if tplErr != nil {

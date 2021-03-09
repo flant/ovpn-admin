@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "axios": "^0.19.2",
+    "bootstrap-vue": "^2.21.2",
+    "normalize.css": "^8.0.1",
     "vue": "^2.6.12",
     "vue-clipboard2": "^0.2.1",
     "vue-cookies": "^1.7.4",

@@ -9,6 +9,9 @@ openvpn-ui
 openvpn-admin
 frontend/node_modules
 
+main-packr.go
+packrd/
+
 # Editor directories and files
 .idea
 *.suo

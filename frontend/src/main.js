@@ -1,16 +1,16 @@
 import Vue from 'vue';
 import axios from 'axios';
 import VueCookies from 'vue-cookies'
+import BootstrapVue from 'bootstrap-vue'
 import VueClipboard from 'vue-clipboard2'
-import VueGoodTablePlugin from 'vue-good-table'
 import Notifications from 'vue-notification'
+import VueGoodTablePlugin from 'vue-good-table'
 
-import 'vue-good-table/dist/vue-good-table.css'
-
-Vue.use(VueClipboard)
-Vue.use(VueGoodTablePlugin)
 Vue.use(VueCookies)
+Vue.use(VueClipboard)
+Vue.use(BootstrapVue)
 Vue.use(Notifications)
+Vue.use(VueGoodTablePlugin)
 
 var axios_cfg = function(url, data='', type='form') {
   if (data == '') {
@@ -96,49 +96,56 @@ new Vue({
         label: 'Change password',
         class: 'btn-warning',
         showWhenStatus: 'Active',
-        showForServerRole: ['master']
+        showForServerRole: ['master'],
+        showForModule: ['passwdAuth'],
       },
       {
         name: 'u-revoke',
         label: 'Revoke',
         class: 'btn-warning',
         showWhenStatus: 'Active',
-        showForServerRole: ['master']
+        showForServerRole: ['master'],
+        showForModule: ["core"],
       },
       {
         name: 'u-unrevoke',
         label: 'Unrevoke',
         class: 'btn-primary',
         showWhenStatus: 'Revoked',
-        showForServerRole: ['master']
+        showForServerRole: ['master'],
+        showForModule: ["core"],
       },
       // {
       //   name: 'u-show-config',
       //   label: 'Show config',
       //   class: 'btn-primary',
       //   showWhenStatus: 'Active',
-      //   showForServerRole: ['master', 'slave']
+      //   showForServerRole: ['master', 'slave'],
+      //   showForModule: ["core"],
       // },
       {
         name: 'u-download-config',
         label: 'Download config',
         class: 'btn-info',
         showWhenStatus: 'Active',
-        showForServerRole: ['master', 'slave']
+        showForServerRole: ['master', 'slave'],
+        showForModule: ["core"],
       },
       {
         name: 'u-edit-ccd',
         label: 'Edit routes',
         class: 'btn-primary',
         showWhenStatus: 'Active',
-        showForServerRole: ['master']
+        showForServerRole: ['master'],
+        showForModule: ["ccd"],
       },
       {
         name: 'u-edit-ccd',
         label: 'Show routes',
         class: 'btn-primary',
         showWhenStatus: 'Active',
-        showForServerRole: ['slave']
+        showForServerRole: ['slave'],
+        showForModule: ["ccd"],
       }
     ],
     filters: {
@@ -146,6 +153,7 @@ new Vue({
     },
     serverRole: "master",
     lastSync: "unknown",
+    modulesEnabled: [],
     u: {
       newUserName: '',
       newUserPassword: '',
@@ -172,7 +180,7 @@ new Vue({
   },
   mounted: function () {
     this.getUserData();
-    this.getServerRole();
+    this.getServerSetting();
     this.filters.hideRevoked = this.$cookies.isKey('hideRevoked') ? (this.$cookies.get('hideRevoked') == "true") : false
   },
   created() {
@@ -302,11 +310,13 @@ new Vue({
       staticAddrInput.value == "dynamic" ? staticAddrInput.value = "" : staticAddrInput.value = "dynamic";
     },
 
-    getServerRole: function() {
+    getServerSetting: function() {
       var _this = this;
-      axios.request(axios_cfg('api/server/role'))
+      axios.request(axios_cfg('api/server/settings'))
       .then(function(response) {
         _this.serverRole = response.data.serverRole;
+        _this.modulesEnabled = response.data.modules;
+
         if (_this.serverRole == "slave") {
           axios.request(axios_cfg('api/sync/last/successful'))
           .then(function(response) {
