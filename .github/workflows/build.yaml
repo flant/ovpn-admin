@@ -13,6 +13,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Docker login
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
         run: |
           echo "${{ secrets.DOCKER_PASS }}" | docker login -u ${{ secrets.DOCKER_PASS }} --password-stdin
       - name: Converge
