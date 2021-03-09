@@ -18,10 +18,10 @@ jobs:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
       - name: Converge
-        uses: werf/actions/converge@master
+        uses: werf/actions/build-and-publish@master
         with:
           group: 1.1
           channel: beta
         env:
           WERF_STAGES_STORAGE: ":local"
-          WERF_REPO: ${{ secrets.REGISTRY }}/${{ github.repository }}
+          WERF_REPO: ${{ secrets.REGISTRY }}
