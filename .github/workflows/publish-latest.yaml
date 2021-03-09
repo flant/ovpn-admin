@@ -17,13 +17,17 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
-      - name: Converge
-        uses: werf/actions/build-and-publish@master
+      - name: Push openvpn image to Docker Hub
+        uses: docker/build-push-action@v1
         with:
-          group: 1.1
-          channel: beta
-        env:
-          WERF_STAGES_STORAGE: ":local"
-          WERF_IMAGES_REPO: ${{ secrets.REGISTRY }}
-          WERF_REPO_IMPLEMENTATION: dockerhub
-          WERF_TAG_GIT_TAG: "latest"
+          tags: flant/openvpn-admin:openvpn-latest
+          context: .
+          file:  Dockerfile.openvpn
+          push: true
+      - name: Push openvpn-admin image to Docker Hub
+        uses: docker/build-push-action@v1
+        with:
+          tags: flant/openvpn-admin:latest
+          file: Dockerfile
+          context: .
+          push: true
