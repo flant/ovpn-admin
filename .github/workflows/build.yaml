@@ -1,8 +1,8 @@
-name: Build and publish to Docker Hub (tags only)
-on:
-  push:
-    tags:
-    - *
+name: Build and publish to Docker Hub (releases only)
+on: 
+  release:
+    types: [created]
+    
 jobs:
   build:
     name: Converge
