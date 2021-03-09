@@ -17,8 +17,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
-        run: |
-          echo "${{ secrets.DOCKER_PASS }}" | docker login -u ${{ secrets.DOCKER_PASS }} --password-stdin
       - name: Converge
         uses: werf/actions/converge@master
         with:
