@@ -532,6 +532,9 @@ func (oAdmin *OpenvpnAdmin) renderClientConfig(username string) string {
 			parts := strings.SplitN(server, ":",3)
 			hosts = append(hosts, OpenvpnServer{Host: parts[0], Port: parts[1], Protocol: parts[2]})
 		}
+		if *debug {
+			log.Printf("WARNING: hosts for %s\n %v", username, hosts )
+		}
 
 		conf := openvpnClientConfig{}
 		conf.Hosts = hosts
@@ -546,11 +549,14 @@ func (oAdmin *OpenvpnAdmin) renderClientConfig(username string) string {
 			log.Println("ERROR: clientConfigTpl not found in templates box")
 		}
 
-		t := template.New(clientConfigTpl)
+		t := template.Must(template.New("client-config").Parse(clientConfigTpl))
 		var tmp bytes.Buffer
 		err := t.Execute(&tmp, conf)
 		if err != nil {
 			log.Printf("WARNING: something goes wrong during rendering config for %s", username )
+			if *debug {
+				log.Printf("ERROR: rendering config for %s failed \n %v", username, err )
+			}
 		}
 
 		hosts = nil
@@ -602,7 +608,7 @@ func (oAdmin *OpenvpnAdmin) modifyCcd(ccd Ccd) (bool, string) {
 				return false, ccdErr
 			}
 
-            t := template.New(ccdTpl)
+            t := template.Must(template.New("ccd").Parse(ccdTpl))
             var tmp bytes.Buffer
             tplErr := t.Execute(&tmp, ccd)
 			if tplErr != nil {
