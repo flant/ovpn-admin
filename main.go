@@ -32,7 +32,7 @@ const (
 	indexTxtDateLayout = "060102150405Z"
 	stringDateFormat = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "2006-01-02 15:04:05"
-	version = "1.6.0"
+	version = "1.6.1"
 )
 
 var (

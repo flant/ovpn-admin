@@ -54,7 +54,7 @@
         </div>
         <div class="modal-body">
           <input type="text" class="form-control el-square modal-el-margin" placeholder="Username [_a-zA-Z0-9\.-]" v-model="u.newUserName">
-          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword">
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword" v-if="modulesEnabled.includes('passwdAuth')">
         </div>
 
         <div class="modal-footer justify-content-center" v-if="u.newUserCreateError.length > 0">
