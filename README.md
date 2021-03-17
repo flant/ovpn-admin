@@ -1,47 +1,59 @@
 # ovpn-admin
 
-Web UI for manage and admin openvpn users
+Simple Web UI to manage OpenVPN users, their certificates & routes.
+
+## Features
+
+* Adding users (generating certificates for them);
+* Revoking/restoring users certificates;
+* Generating ready-to-user config files;
+* Providing metrics for Prometheus, including certifications expiration date, number of (connected/total) users, information about connected users;
+* (optionally) Specifying CCD (`client-config-dir`) for each user;
+* (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
+* (optionally) Specifying/changing password for additional authorization in OpenVPN.
 
 ## Install
 
-### disclaimer
+### Disclaimer
 
-Because this utility uses external calls for `bash`, `core-utils` and `easyrsa` it can work only on Linux systems
+This tool uses external calls for `bash`, `core-utils` and `easyrsa`, thus **Linux systems only are supported** at the moment.
 
-### docker
+### Docker
 
-We have [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml) you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh)
+There is a ready-to-use [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml), so you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh).
 
-First you need to have installed
-[docker](https://docs.docker.com/get-docker/)
-[docker-compose](https://docs.docker.com/compose/install/)
+Requirements. You need [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https://docs.docker.com/compose/install/) installed.
+
+Commands to execute:
 
 ```bash
 git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
-start.sh
+./start.sh
 ```
 
-### building from source
+### Building from source
 
-First you need to have installed: 
-[golang](https://golang.org/doc/install)
-[packr2](https://github.com/gobuffalo/packr#installation)
-[nodejs/npm](https://nodejs.org/en/download/package-manager/)
+Requirements. You need Linux with the following components installed:
+- [golang](https://golang.org/doc/install)
+- [packr2](https://github.com/gobuffalo/packr#installation)
+- [nodejs/npm](https://nodejs.org/en/download/package-manager/)
 
+Commands to execute:
 
 ```bash
 git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
-bootstrap.sh
-build.sh
+./bootstrap.sh
+./build.sh
  ./ovpn-admin 
 ```
-be sure you don't forgot  to configure all needed params
 
-### prebuild binary (WIP)
-You can use prebuild binary from [releases](https://github.com/flant/ovpn-admin/releases) page
-just download tar.gz file .
+(Please don't forgot to configure all needed params in advance.)
+
+### Prebuilt binary (WIP)
+
+You can also use prebuilt binary from [releases](https://github.com/flant/ovpn-admin/releases) page — just download a tar.gz file.
 
 ## Usage
 
@@ -79,5 +91,8 @@ Flags:
   --verbose                    Enable verbose mode.
   --version                    Show application version.
 
-
 ```
+
+## Further information
+
+Please feel free to use [issues](https://github.com/flant/ovpn-admin/issues) and [discussions](https://github.com/flant/ovpn-admin/discussions) to get help from maintainers & community.
