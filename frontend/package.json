@@ -1,5 +1,5 @@
 {
-  "name": "openvpn-admin",
+  "name": "ovpn-admin",
   "description": "Vue.js admin ui for openvpn and easyrsa",
   "version": "1.0.1a",
   "author": "vitaliy.snurnitsin@gmail.com",

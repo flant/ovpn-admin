@@ -1,4 +1,4 @@
-module openvpn-admin
+module ovpn-admin
 
 go 1.14
 

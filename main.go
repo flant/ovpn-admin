@@ -36,8 +36,8 @@ const (
 )
 
 var (
-	listenHost      		= kingpin.Flag("listen.host","host for openvpn-admin").Default("0.0.0.0").String()
-	listenPort      		= kingpin.Flag("listen.port","port for openvpn-admin").Default("8080").String()
+	listenHost      		= kingpin.Flag("listen.host","host for ovpn-admin").Default("0.0.0.0").String()
+	listenPort      		= kingpin.Flag("listen.port","port for ovpn-admin").Default("8080").String()
     serverRole              = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
 	masterHost              = kingpin.Flag("master.host","url for master server").Default("http://127.0.0.1").String()
 	masterBasicAuthUser		= kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").String()

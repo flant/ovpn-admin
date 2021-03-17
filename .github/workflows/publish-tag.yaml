@@ -21,14 +21,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/openvpn-admin
+          repository: flant/ovpn-admin
           tags: openvpn-${{ steps.get_version.outputs.VERSION }}
           dockerfile:  Dockerfile.openvpn
-      - name: Push openvpn-admin image to Docker Hub
+      - name: Push ovpn-admin image to Docker Hub
         uses: docker/build-push-action@v1
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/openvpn-admin
+          repository: flant/ovpn-admin
           tags: ${{ steps.get_version.outputs.VERSION }}
           dockerfile: Dockerfile
