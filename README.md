@@ -1,4 +1,4 @@
-# openvpn-admin
+# ovpn-admin
 
 Web UI for manage and admin openvpn users
 
@@ -10,15 +10,15 @@ Because this utility uses external calls for `bash`, `core-utils` and `easyrsa` 
 
 ### docker
 
-We have [docker-compose.yaml](https://github.com/flant/openvpn-admin/blob/master/docker-compose.yaml) you can just change/add values you need and start it with [start.sh](https://github.com/flant/openvpn-admin/blob/master/start.sh)
+We have [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml) you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh)
 
 First you need to have installed
 [docker](https://docs.docker.com/get-docker/)
 [docker-compose](https://docs.docker.com/compose/install/)
 
 ```bash
-git clone https://github.com/flant/openvpn-admin.git
-cd openvpn-admin
+git clone https://github.com/flant/ovpn-admin.git
+cd ovpn-admin
 start.sh
 ```
 
@@ -31,27 +31,27 @@ First you need to have installed:
 
 
 ```bash
-git clone https://github.com/flant/openvpn-admin.git
-cd openvpn-admin
+git clone https://github.com/flant/ovpn-admin.git
+cd ovpn-admin
 bootstrap.sh
 build.sh
- ./openvpn-admin 
+ ./ovpn-admin 
 ```
 be sure you don't forgot  to configure all needed params
 
 ### prebuild binary (WIP)
-You can use prebuild binary from [releases](https://github.com/flant/openvpn-admin/releases) page
+You can use prebuild binary from [releases](https://github.com/flant/ovpn-admin/releases) page
 just download tar.gz file .
 
 ## Usage
 
 ```
-usage: openvpn-admin [<flags>]
+usage: ovpn-admin [<flags>]
 
 Flags:
   --help                       Show context-sensitive help (also try --help-long and --help-man).
-  --listen.host="0.0.0.0"      host for openvpn-admin
-  --listen.port="8080"         port for openvpn-admin
+  --listen.host="0.0.0.0"      host for ovpn-admin
+  --listen.port="8080"         port for ovpn-admin
   --role="master"              server role master or slave
   --master.host="http://127.0.0.1"  
                                url for master server
