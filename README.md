@@ -1,6 +1,6 @@
 # ovpn-admin
 
-Simple Web UI to manage OpenVPN users, their certificates & routes.
+Simple web UI to manage OpenVPN users, their certificates & routes.
 
 ## Features
 
@@ -18,7 +18,7 @@ Simple Web UI to manage OpenVPN users, their certificates & routes.
 
 This tool uses external calls for `bash`, `core-utils` and `easyrsa`, thus **Linux systems only are supported** at the moment.
 
-### Docker
+### 1. Docker
 
 There is a ready-to-use [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml), so you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh).
 
@@ -32,7 +32,7 @@ cd ovpn-admin
 ./start.sh
 ```
 
-### Building from source
+### 2. Building from source
 
 Requirements. You need Linux with the following components installed:
 - [golang](https://golang.org/doc/install)
@@ -46,14 +46,14 @@ git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
 ./bootstrap.sh
 ./build.sh
- ./ovpn-admin 
+./ovpn-admin 
 ```
 
 (Please don't forgot to configure all needed params in advance.)
 
-### Prebuilt binary (WIP)
+### 3. Prebuilt binary (WIP)
 
-You can also use prebuilt binary from [releases](https://github.com/flant/ovpn-admin/releases) page — just download a tar.gz file.
+You can also download & use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
 
 ## Usage
 
