@@ -4,10 +4,10 @@ Simple web UI to manage OpenVPN users, their certificates & routes in Linux. Whi
 
 ## Features
 
-* Adding users (generating certificates for them);
+* Adding OpenVPN users (generating certificates for them);
 * Revoking/restoring users certificates;
 * Generating ready-to-user config files;
-* Providing metrics for Prometheus, including certifications expiration date, number of (connected/total) users, information about connected users;
+* Providing metrics for Prometheus, including certificates expiration date, number of (connected/total) users, information about connected users;
 * (optionally) Specifying CCD (`client-config-dir`) for each user;
 * (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
 * (optionally) Specifying/changing password for additional authorization in OpenVPN.
