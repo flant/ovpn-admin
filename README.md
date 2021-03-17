@@ -12,6 +12,14 @@ Simple web UI to manage OpenVPN users, their certificates & routes in Linux. Whi
 * (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
 * (optionally) Specifying/changing password for additional authorization in OpenVPN.
 
+### Screenshots
+
+Managing users in ovpn-admin:
+![ovpn-admin UI](https://raw.githubusercontent.com/flant/ovpn-admin/master/img/ovpn-admin-users.png)
+
+An example of dashboard made using ovpn-admin metrics:
+![ovpn-admin metrics](https://raw.githubusercontent.com/flant/ovpn-admin/master/img/ovpn-admin-metrics.png)
+
 ## Installation
 
 ### Disclaimer
