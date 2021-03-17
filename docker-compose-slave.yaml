@@ -8,7 +8,7 @@ services:
     image: openvpn:local
     command: /etc/openvpn/setup/configure.sh
     environment:
-      - OPVN_ROLE=slave
+      - OVPN_ROLE=slave
     cap_add:
       - NET_ADMIN
     ports:
@@ -23,7 +23,7 @@ services:
     image: ovpn-admin:local
     command: /app/ovpn-admin --debug --ovpn.network="172.16.100.0/22" --master.sync-token="TOKEN" --master.host="http://172.20.0.1:8080" --role="slave" --ovpn.server="127.0.0.1:7777:tcp" --ovpn.server="127.0.0.1:7778:tcp" --easyrsa.path="/mnt/easyrsa" --easyrsa.index-path="/mnt/easyrsa/pki/index.txt"
     environment:
-      - OPVN_SLAVE=1
+      - OVPN_SLAVE=1
     network_mode: service:openvpn
     volumes:
       - ./easyrsa_slave:/mnt/easyrsa

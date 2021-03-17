@@ -7,7 +7,7 @@ cd $EASY_RSA_LOC
 if [ -e "$SERVER_CERT" ]; then
   echo "Found existing certs - reusing"
 else
-  if [ ${OPVN_ROLE:-"master"} = "slave" ]; then
+  if [ ${OVPN_ROLE:-"master"} = "slave" ]; then
     echo "Waiting for initial sync data from master"
     while [ $(wget -q localhost/api/sync/last/try -O - | wc -m) -lt 1 ]
     do
@@ -34,7 +34,7 @@ fi
 
 cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
-if [ ${OPVN_PASSWD_AUTH} = "true" ]; then
+if [ ${OVPN_PASSWD_AUTH} = "true" ]; then
   mkdir -p /etc/openvpn/scripts/
   cp -f /etc/openvpn/setup/auth.sh /etc/openvpn/scripts/auth.sh
   chmod +x /etc/openvpn/scripts/auth.sh
