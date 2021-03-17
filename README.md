@@ -1,6 +1,6 @@
 # ovpn-admin
 
-Simple web UI to manage OpenVPN users, their certificates & routes.
+Simple web UI to manage OpenVPN users, their certificates & routes in Linux. While backend is written in Go, frontend is based on Vue.js.
 
 ## Features
 
@@ -12,7 +12,7 @@ Simple web UI to manage OpenVPN users, their certificates & routes.
 * (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
 * (optionally) Specifying/changing password for additional authorization in OpenVPN.
 
-## Install
+## Installation
 
 ### Disclaimer
 
