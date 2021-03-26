@@ -2,6 +2,8 @@
 
 Simple web UI to manage OpenVPN users, their certificates & routes in Linux. While backend is written in Go, frontend is based on Vue.js.
 
+Originally created in [Flant](https://flant.com/) for internal needs & used for years, then updated to be more modern and [publicly released](https://blog.flant.com/introducing-ovpn-admin-web-interface-for-openvpn/) in March'21. Your contributions are welcome!
+
 ## Features
 
 * Adding OpenVPN users (generating certificates for them);
