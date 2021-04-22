@@ -26,7 +26,7 @@ An example of dashboard made using ovpn-admin metrics:
 
 ### Disclaimer
 
-This tool uses external calls for `bash`, `core-utils` and `easyrsa`, thus **Linux systems only are supported** at the moment.
+This tool uses external calls for `bash`, `coreutils` and `easy-rsa`, thus **Linux systems only are supported** at the moment.
 
 ### 1. Docker
 
