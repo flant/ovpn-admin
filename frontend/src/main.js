@@ -92,6 +92,14 @@ new Vue({
     rows: [],
     actions: [
       {
+        name: 'u-kill',
+        label: 'Kill',
+        class: 'btn-warning',
+        showWhenStatus: 'Connected',
+        showForServerRole: ['master', 'slave'],
+        showForModule: ["core"],
+      },
+      {
         name: 'u-change-password',
         label: 'Change password',
         class: 'btn-warning',
@@ -186,6 +194,15 @@ new Vue({
   created() {
     var _this = this;
 
+    _this.$root.$on('u-kill', function (msg) {
+      var data = new URLSearchParams();
+      data.append('username', _this.username);
+      axios.request(axios_cfg('api/user/kill', data, 'form'))
+      .then(function(response) {
+        _this.getUserData();
+        _this.$notify({title: 'User ' + _this.username + ' session killed!', type: 'warn'})
+      });
+    })
     _this.$root.$on('u-revoke', function (msg) {
       var data = new URLSearchParams();
       data.append('username', _this.username);

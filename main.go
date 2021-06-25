@@ -238,6 +238,11 @@ func (oAdmin *OvpnAdmin) userCreateHandler(w http.ResponseWriter, r *http.Reques
     }
 }
 
+func (oAdmin *OvpnAdmin) userKillHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	fmt.Fprintf(w, "%s", oAdmin.userKill(r.FormValue("username")))
+}
+
 func (oAdmin *OvpnAdmin) userRevokeHandler(w http.ResponseWriter, r *http.Request) {
 	if oAdmin.role == "slave" {
 		http.Error(w, `{"status":"error"}`, http.StatusLocked)
@@ -426,6 +431,7 @@ func main() {
 	http.Handle("/", static)
 	http.HandleFunc("/api/server/settings", ovpnAdmin.serverSettingsHandler)
 	http.HandleFunc("/api/users/list", ovpnAdmin.userListHandler)
+	http.HandleFunc("/api/user/kill", ovpnAdmin.userKillHandler)
 	http.HandleFunc("/api/user/create", ovpnAdmin.userCreateHandler)
 	http.HandleFunc("/api/user/change-password", ovpnAdmin.userChangePasswordHandler)
 	http.HandleFunc("/api/user/revoke", ovpnAdmin.userRevokeHandler)
@@ -865,6 +871,17 @@ func (oAdmin *OvpnAdmin) getUserStatistic(username string) clientStatus {
 		}
 	}
 	return clientStatus{}
+}
+
+func (oAdmin *OvpnAdmin) userKill(username string) string {
+	userConnected, userConnectedTo := isUserConnected(username, oAdmin.activeClients)
+	if userConnected {
+		oAdmin.mgmtKillUserConnection(username, userConnectedTo)
+		fmt.Printf("User \"%s\" session killed", username)
+		return fmt.Sprintf("User \"%s\" session killed", username)
+	}
+	fmt.Printf("User \"%s\" is not connected", username)
+	return fmt.Sprintf("User \"%s\" is not connected", username)
 }
 
 func (oAdmin *OvpnAdmin) userRevoke(username string) string {

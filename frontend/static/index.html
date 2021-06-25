@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>ovpn-admin</title>
+  <title>OpenVPN Admin Panel</title>
+  <meta http-equiv="refresh" content="30" />
 </head>
 <body>
 <script src="dist/style.min.js"></script>
@@ -25,6 +26,19 @@
     </div>
     <template slot="table-row" slot-scope="props">
       <span v-if="props.column.field == 'actions'">
+        <button
+          class="btn btn-sm el-square modal-el-margin"
+          type="button"
+          :title="action.label"
+          :data-username="props.row.Identity"
+          :data-name="action.name"
+          :data-text="action.label"
+          @click.left.stop="rowActionFn"
+          v-for="action in actions"
+          v-bind:class="action.class"
+          v-if="action.showWhenStatus == props.row.ConnectionStatus">
+          {{ action.label }}
+        </button>
         <button
           class="btn btn-sm el-square modal-el-margin"
           type="button"
