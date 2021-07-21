@@ -94,6 +94,9 @@ Flags:
                                path to easyrsa index file.
   --ccd                        Enable client-config-dir.
   --ccd.path="./ccd"           path to client-config-dir
+  --templates.clientconfig-path=""
+                               path to custom client.config.tpl file
+  --templates.ccd-path=""      path to custom ccd.tpl file
   --auth.password              Enable additional password authorization.
   --auth.db="./easyrsa/pki/users.db"  
                                Database path fort password authorization.
