@@ -5,3 +5,4 @@ RUN apk add --update bash openvpn easy-rsa  && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
 COPY setup/ /etc/openvpn/setup
 RUN chmod +x /etc/openvpn/setup/configure.sh
+CMD ["/etc/openvpn/setup/configure.sh"]

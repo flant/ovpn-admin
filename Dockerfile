@@ -14,3 +14,4 @@ RUN apk add --update bash easy-rsa  && \
     ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin && \
     wget https://github.com/pashcovich/openvpn-user/releases/download/v1.0.3-rc.1/openvpn-user-linux-amd64.tar.gz -O - | tar xz -C /usr/local/bin && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
+CMD ["/app/ovpn-admin", "--debug", "--ovpn.network=172.16.100.0/22", "--master.sync-token=TOKEN", "--easyrsa.path=/mnt/easyrsa", "--easyrsa.index-path=/mnt/easyrsa/pki/index.txt", "--ovpn.server=127.0.0.1:7777:tcp"]
