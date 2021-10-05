@@ -27,7 +27,9 @@ func parseDateToUnix(layout,datetime string) int64 {
 }
 
 func runBash(script string) string {
-	fmt.Println(script)
+	if *debug {
+		log.Println(script)
+	}
 	cmd := exec.Command("bash", "-c", script)
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
@@ -98,7 +100,7 @@ func fDownload(path, url string, basicAuth bool) error {
 	}
 
 	if resp.StatusCode != 200 {
-		log.Printf("WARNING: Download file operation for url %s finished with status code %d", url, resp.StatusCode  )
+		log.Printf("WARNING: Download file operation for url %s finished with status code %d\n", url, resp.StatusCode  )
 	}
 	defer resp.Body.Close()
 

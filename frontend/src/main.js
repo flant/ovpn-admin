@@ -335,13 +335,15 @@ new Vue({
       data.append('username', _this.u.newUserName);
       data.append('password', _this.u.newUserPassword);
 
+      _this.username = _this.u.newUserName;
+
       axios.request(axios_cfg('api/user/create', data, 'form'))
       .then(function(response) {
+        _this.$notify({title: 'New user ' + _this.username + ' created', type: 'success'})
         _this.u.modalNewUserVisible = false;
         _this.u.newUserName = '';
         _this.u.newUserPassword = '';
         _this.getUserData();
-        _this.$notify({title: 'New user ' + _this.username + ' created', type: 'success'})
       })
       .catch(function(error) {
         _this.u.newUserCreateError = error.response.data;
