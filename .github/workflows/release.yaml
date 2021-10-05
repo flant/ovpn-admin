@@ -1,0 +1,26 @@
+on:
+  release:
+    types: [created]
+
+jobs:
+  releases-matrix:
+    name: Release Go Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # build and publish in parallel: linux/386, linux/amd64, windows/386, windows/amd64, darwin/386, darwin/amd64
+        goos: [linux]
+        goarch: ["386", amd64]
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v2
+      - name: build binaries
+        uses: wangyoucao577/go-release-action@v1.20
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: '-linkmode external -extldflags "-static" -s -w'
+          pre_command: bash ./install-deps.sh
+          binary_name: "ovpn-admin"
+          asset_name: ovpn-admin-${{ matrix.goos }}-${{ matrix.goarch }}.

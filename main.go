@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,6 +15,10 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/gobuffalo/packr/v2"
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,35 +38,42 @@ const (
 	indexTxtDateLayout   = "060102150405Z"
 	stringDateFormat     = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "2006-01-02 15:04:05"
-	version              = "1.6.3"
 )
 
 var (
-	listenHost               = kingpin.Flag("listen.host", "host for ovpn-admin").Default("0.0.0.0").String()
-	listenPort               = kingpin.Flag("listen.port", "port for ovpn-admin").Default("8080").String()
-	serverRole               = kingpin.Flag("role", "server role master or slave").Default("master").HintOptions("master", "slave").String()
-	masterHost               = kingpin.Flag("master.host", "url for master server").Default("http://127.0.0.1").String()
-	masterBasicAuthUser      = kingpin.Flag("master.basic-auth.user", "user for basic auth on master server url").Default("").String()
-	masterBasicAuthPassword  = kingpin.Flag("master.basic-auth.password", "password for basic auth on master server url").Default("").String()
+	listenHost      				 = kingpin.Flag("listen.host","host for ovpn-admin").Default("0.0.0.0").String()
+	listenPort      				 = kingpin.Flag("listen.port","port for ovpn-admin").Default("8080").String()
+	serverRole               = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
+	masterHost               = kingpin.Flag("master.host","url for master server").Default("http://127.0.0.1").String()
+	masterBasicAuthUser			 = kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").String()
+	masterBasicAuthPassword  = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
 	masterSyncFrequency      = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
 	masterSyncToken          = kingpin.Flag("master.sync-token", "master host data sync security token").Default("VerySecureToken").PlaceHolder("TOKEN").String()
-	openvpnNetwork           = kingpin.Flag("ovpn.network", "network for openvpn server").Default("172.16.100.0/24").String()
-	openvpnServer            = kingpin.Flag("ovpn.server", "comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
-	mgmtAddress              = kingpin.Flag("mgmt", "comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
-	metricsPath              = kingpin.Flag("metrics.path", "URL path for surfacing collected metrics").Default("/metrics").String()
-	easyrsaDirPath           = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").String()
-	indexTxtPath             = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("./easyrsa/pki/index.txt").String()
-	ccdEnabled               = kingpin.Flag("ccd", "Enable client-config-dir.").Default("false").Bool()
-	ccdDir                   = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").String()
+	openvpnNetwork           = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
+	openvpnServer      			 = kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
+	openvpnServerBehindLB 	 = kingpin.Flag("ovpn.server.behindLB","ovpn behind cloud loadbalancer").Default("false").Bool()
+	openvpnServiceName 			 = kingpin.Flag("ovpn.service","ovpn behind cloud loadbalancer k8s service name").Default("openvpn-external").String()
+	mgmtAddress		    			 = kingpin.Flag("mgmt","comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
+	metricsPath 						 = kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
+	easyrsaDirPath     			 = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").String()
+	indexTxtPath    				 = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("./easyrsa/pki/index.txt").String()
+	ccdEnabled  						 = kingpin.Flag("ccd", "Enable client-config-dir.").Default("false").Bool()
+	ccdDir          				 = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").String()
 	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").String()
 	ccdTemplatePath          = kingpin.Flag("templates.ccd-path", "path to custom ccd.tpl").Default("").String()
-	authByPassword           = kingpin.Flag("auth.password", "Enable additional password authorization.").Default("false").Bool()
-	authDatabase             = kingpin.Flag("auth.db", "Database path fort password authorization.").Default("./easyrsa/pki/users.db").String()
-	debug                    = kingpin.Flag("debug", "Enable debug mode.").Default("false").Bool()
-	verbose                  = kingpin.Flag("verbose", "Enable verbose mode.").Default("false").Bool()
+	authByPassword 					 = kingpin.Flag("auth.password", "Enable additional password authorization.").Default("false").Bool()
+	authDatabase 						 = kingpin.Flag("auth.db", "Database path fort password authorization.").Default("./easyrsa/pki/users.db").String()
+	debug           				 = kingpin.Flag("debug", "Enable debug mode.").Default("false").Bool()
+	verbose           			 = kingpin.Flag("verbose", "Enable verbose mode.").Default("false").Bool()
 
-	certsArchivePath = "/tmp/" + certsArchiveFileName
-	ccdArchivePath   = "/tmp/" + ccdArchiveFileName
+	certsArchivePath         = "/tmp/" + certsArchiveFileName
+	ccdArchivePath           = "/tmp/" + ccdArchiveFileName
+
+	version = "1.7.0"
+
+	kubeTokenFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	kubeNamespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+
 )
 
 var (
@@ -167,12 +179,14 @@ type openvpnClientConfig struct {
 }
 
 type OpenvpnClient struct {
-	Identity         string `json:"Identity"`
-	AccountStatus    string `json:"AccountStatus"`
-	ExpirationDate   string `json:"ExpirationDate"`
-	RevocationDate   string `json:"RevocationDate"`
-	ConnectionStatus string `json:"ConnectionStatus"`
-	ConnectionServer string `json:"ConnectionServer"`
+
+	Identity            string      `json:"Identity"`
+	AccountStatus       string      `json:"AccountStatus"`
+	ExpirationDate      string      `json:"ExpirationDate"`
+	RevocationDate      string      `json:"RevocationDate"`
+	ConnectionStatus    string      `json:"ConnectionStatus"`
+	ConnectionServer 	string      `json:"ConnectionServer"`
+
 }
 
 type ccdRoute struct {
@@ -543,6 +557,10 @@ func (oAdmin *OvpnAdmin) renderClientConfig(username string) string {
 			parts := strings.SplitN(server, ":", 3)
 			hosts = append(hosts, OpenvpnServer{Host: parts[0], Port: parts[1], Protocol: parts[2]})
 		}
+		if *openvpnServerBehindLB {
+			hosts = getOvpnServerHostsFromKubeApi()
+		}
+
 		if *debug {
 			log.Printf("WARNING: hosts for %s\n %v", username, hosts)
 		}
@@ -560,9 +578,11 @@ func (oAdmin *OvpnAdmin) renderClientConfig(username string) string {
 		var tmp bytes.Buffer
 		err := t.Execute(&tmp, conf)
 		if err != nil {
-			log.Printf("WARNING: something goes wrong during rendering config for %s", username)
+
+			log.Printf("WARNING: something goes wrong during rendering config for %s\n", username )
 			if *debug {
-				log.Printf("ERROR: rendering config for %s failed \n %v", username, err)
+				log.Printf("ERROR: rendering config for %s failed \n %v\n", username, err )
+
 			}
 		}
 
@@ -635,56 +655,57 @@ func (oAdmin *OvpnAdmin) modifyCcd(ccd Ccd) (bool, string) {
 }
 
 func validateCcd(ccd Ccd) (bool, string) {
-	ccdErr := ""
 
-	if ccd.ClientAddress != "dynamic" {
-		_, ovpnNet, err := net.ParseCIDR(*openvpnNetwork)
-		if err != nil {
-			log.Println(err)
-		}
+    ccdErr := ""
 
-		if !checkStaticAddressIsFree(ccd.ClientAddress, ccd.User) {
-			ccdErr = fmt.Sprintf("ClientAddress \"%s\" already assigned to another user", ccd.ClientAddress)
-			if *debug {
-				log.Printf("ERROR: Modify ccd for user %s: %s", ccd.User, ccdErr)
-			}
-			return false, ccdErr
-		}
+    if ccd.ClientAddress != "dynamic" {
+        _, ovpnNet, err := net.ParseCIDR(*openvpnNetwork)
+        if err != nil {
+		    log.Println(err)
+	    }
 
-		if net.ParseIP(ccd.ClientAddress) == nil {
-			ccdErr = fmt.Sprintf("ClientAddress \"%s\" not a valid IP address", ccd.ClientAddress)
-			if *debug {
-				log.Printf("ERROR: Modify ccd for user %s: %s", ccd.User, ccdErr)
-			}
-			return false, ccdErr
-		}
+	    if ! checkStaticAddressIsFree(ccd.ClientAddress, ccd.User) {
+            ccdErr = fmt.Sprintf("ClientAddress \"%s\" already assigned to another user", ccd.ClientAddress)
+            if *debug {
+                log.Printf("ERROR: Modify ccd for user %s: %s\n", ccd.User, ccdErr)
+            }
+            return false, ccdErr
+	    }
 
-		if !ovpnNet.Contains(net.ParseIP(ccd.ClientAddress)) {
-			ccdErr = fmt.Sprintf("ClientAddress \"%s\" not belongs to openvpn server network", ccd.ClientAddress)
-			if *debug {
-				log.Printf("ERROR: Modify ccd for user %s: %s", ccd.User, ccdErr)
-			}
-			return false, ccdErr
-		}
-	}
+        if net.ParseIP(ccd.ClientAddress) == nil {
+            ccdErr = fmt.Sprintf("ClientAddress \"%s\" not a valid IP address", ccd.ClientAddress)
+            if *debug {
+                log.Printf("ERROR: Modify ccd for user %s: %s\n",  ccd.User, ccdErr)
+            }
+            return false, ccdErr
+        }
 
-	for _, route := range ccd.CustomRoutes {
-		if net.ParseIP(route.Address) == nil {
-			ccdErr = fmt.Sprintf("CustomRoute.Address \"%s\" must be a valid IP address", route.Address)
-			if *debug {
-				log.Printf("ERROR: Modify ccd for user %s: %s", ccd.User, ccdErr)
-			}
-			return false, ccdErr
-		}
+        if ! ovpnNet.Contains(net.ParseIP(ccd.ClientAddress)) {
+            ccdErr = fmt.Sprintf("ClientAddress \"%s\" not belongs to openvpn server network", ccd.ClientAddress)
+            if *debug {
+                log.Printf("ERROR: Modify ccd for user %s: %s\n", ccd.User, ccdErr)
+            }
+            return false, ccdErr
+        }
+    }
 
-		if net.ParseIP(route.Mask) == nil {
-			ccdErr = fmt.Sprintf("CustomRoute.Mask \"%s\" must be a valid IP address", route.Mask)
-			if *debug {
-				log.Printf("ERROR: Modify ccd for user %s: %s", ccd.User, ccdErr)
-			}
-			return false, ccdErr
-		}
-	}
+    for _, route := range ccd.CustomRoutes {
+        if net.ParseIP(route.Address) == nil {
+            ccdErr = fmt.Sprintf("CustomRoute.Address \"%s\" must be a valid IP address", route.Address)
+            if *debug {
+                log.Printf("ERROR: Modify ccd for user %s: %s\n", ccd.User, ccdErr)
+            }
+            return false, ccdErr
+        }
+
+        if net.ParseIP(route.Mask) == nil {
+            ccdErr = fmt.Sprintf("CustomRoute.Mask \"%s\" must be a valid IP address", route.Mask)
+            if *debug {
+                log.Printf("ERROR: Modify ccd for user %s: %s\n", ccd.User, ccdErr)
+            }
+            return false, ccdErr
+        }
+    }
 
 	return true, ccdErr
 }
@@ -702,7 +723,7 @@ func (oAdmin *OvpnAdmin) getCcd(username string) Ccd {
 }
 
 func checkStaticAddressIsFree(staticAddress string, username string) bool {
-	o := runBash(fmt.Sprintf("grep -rl %s %s | grep -vx %s/%s | wc -l", staticAddress, *ccdDir, *ccdDir, username))
+	o := runBash(fmt.Sprintf("grep -rl ' %s ' %s | grep -vx %s/%s | wc -l", staticAddress, *ccdDir, *ccdDir, username))
 
 	if strings.TrimSpace(o) == "0" {
 		return true
@@ -781,7 +802,7 @@ func (oAdmin *OvpnAdmin) usersList() []OpenvpnClient {
 	otherCerts := totalCerts - validCerts - revokedCerts - expiredCerts
 
 	if otherCerts != 0 {
-		log.Printf("WARNING: there are %d otherCerts", otherCerts)
+		log.Printf("WARNING: there are %d otherCerts\n", otherCerts)
 	}
 
 	ovpnClientsTotal.Set(float64(totalCerts))
@@ -798,7 +819,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 	if checkUserExist(username) {
 		ucErr = fmt.Sprintf("User \"%s\" already exists\n", username)
 		if *debug {
-			log.Printf("ERROR: userCreate: %s", ucErr)
+			log.Printf("ERROR: userCreate: %s\n", ucErr)
 		}
 		return false, ucErr
 	}
@@ -806,7 +827,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 	if !validateUsername(username) {
 		ucErr = fmt.Sprintf("Username \"%s\" incorrect, you can use only %s\n", username, usernameRegexp)
 		if *debug {
-			log.Printf("ERROR: userCreate: %s", ucErr)
+			log.Printf("ERROR: userCreate: %s\n", ucErr)
 		}
 		return false, ucErr
 	}
@@ -822,15 +843,15 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 	}
 
 	o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && easyrsa build-client-full %s nopass", *easyrsaDirPath, username))
-	fmt.Println(o)
+	log.Println(o)
 
 	if *authByPassword {
 		o = runBash(fmt.Sprintf("openvpn-user create --db.path %s --user %s --password %s", *authDatabase, username, password))
-		fmt.Println(o)
+		log.Println(o)
 	}
 
 	if *verbose {
-		log.Printf("INFO: user created: %s", username)
+		log.Printf("INFO: user created: %s\n", username)
 	}
 
 	oAdmin.clients = oAdmin.usersList()
@@ -842,7 +863,7 @@ func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (bool, st
 
 	if checkUserExist(username) {
 		o := runBash(fmt.Sprintf("openvpn-user check --db.path %s --user %s | grep %s | wc -l", *authDatabase, username, username))
-		fmt.Println(o)
+		log.Println(o)
 
 		if !validatePassword(password) {
 			ucpErr := fmt.Sprintf("Password for too short, password length must be greater or equal %d", passwordMinLength)
@@ -853,16 +874,16 @@ func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (bool, st
 		}
 
 		if strings.TrimSpace(o) == "0" {
-			fmt.Println("Creating user in users.db")
+			log.Println("Creating user in users.db")
 			o = runBash(fmt.Sprintf("openvpn-user create --db.path %s --user %s --password %s", *authDatabase, username, password))
-			fmt.Println(o)
+			log.Println(o)
 		}
 
 		o = runBash(fmt.Sprintf("openvpn-user change-password --db.path %s --user %s --password %s", *authDatabase, username, password))
-		fmt.Println(o)
+		log.Println(o)
 
 		if *verbose {
-			log.Printf("INFO: password for user %s was changed", username)
+			log.Printf("INFO: password for user %s was changed\n", username)
 		}
 		return true, "Password changed"
 	}
@@ -887,11 +908,17 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) string {
 			o = runBash(fmt.Sprintf("openvpn-user revoke --db-path %s --user %s", *authDatabase, username))
 			//fmt.Println(o)
 		}
+
 		crlFix()
+		userConnected, userConnectedTo := isUserConnected(username, oAdmin.activeClients)
+		if userConnected {
+			oAdmin.mgmtKillUserConnection(username, userConnectedTo)
+			log.Printf("Session for user \"%s\" session killed\n", username)
+		}
 		oAdmin.clients = oAdmin.usersList()
 		return fmt.Sprintln(o)
 	}
-	fmt.Printf("User \"%s\" not found", username)
+	log.Printf("User \"%s\" not found\n", username)
 	return fmt.Sprintf("User \"%s\" not found", username)
 }
 
@@ -1094,25 +1121,25 @@ func (oAdmin *OvpnAdmin) syncDataFromMaster() {
 
 	for certsDownloadFailed && certsDownloadRetries < retryCountMax {
 		certsDownloadRetries += 1
-		log.Printf("Downloading certs archive from master. Attempt %d", certsDownloadRetries)
+		log.Printf("Downloading certs archive from master. Attempt %d\n", certsDownloadRetries)
 		if oAdmin.downloadCerts() {
 			certsDownloadFailed = false
 			log.Println("Decompression certs archive from master")
 			unArchiveCerts()
 		} else {
-			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d", certsDownloadRetries)
+			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d\n", certsDownloadRetries)
 		}
 	}
 
 	for ccdDownloadFailed && ccdDownloadRetries < retryCountMax {
 		ccdDownloadRetries += 1
-		log.Printf("Downloading ccd archive from master. Attempt %d", ccdDownloadRetries)
+		log.Printf("Downloading ccd archive from master. Attempt %d\n", ccdDownloadRetries)
 		if oAdmin.downloadCcd() {
 			ccdDownloadFailed = false
 			log.Println("Decompression ccd archive from master")
 			unArchiveCcd()
 		} else {
-			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d", ccdDownloadRetries)
+			log.Printf("WARNING: something goes wrong during downloading certs from master. Attempt %d\n", ccdDownloadRetries)
 		}
 	}
 
@@ -1129,6 +1156,43 @@ func (oAdmin *OvpnAdmin) syncWithMaster() {
 	}
 }
 
+
+func getOvpnServerHostsFromKubeApi() []OpenvpnServer {
+	var hosts []OpenvpnServer
+	var lbHost string
+
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+	}
+
+	service, err := clientset.CoreV1().Services(fRead(kubeNamespaceFilePath)).Get(context.TODO(), *openvpnServiceName, metav1.GetOptions{})
+	if err != nil {
+		log.Printf("ERROR: %s\n", err.Error())
+	}
+
+	if *debug {
+		log.Printf("Debug: service from kube api %v\n", service)
+		log.Printf("Debug: service.Status from kube api %v\n", service.Status)
+		log.Printf("Debug: service.Status.LoadBalancer from kube api %v\n", service.Status.LoadBalancer)
+	}
+
+	if service.Status.LoadBalancer.Ingress[0].Hostname != "" {
+		lbHost = service.Status.LoadBalancer.Ingress[0].Hostname
+	}
+	if service.Status.LoadBalancer.Ingress[0].IP != "" {
+		lbHost = service.Status.LoadBalancer.Ingress[0].IP
+	}
+	hosts = append(hosts, OpenvpnServer{lbHost,strconv.Itoa(int(service.Spec.Ports[0].Port)),string(service.Spec.Ports[0].Protocol)})
+
+	return hosts
+}
+
 func getOvpnCaCertExpireDate() time.Time {
 	caCertPath := *easyrsaDirPath + "/pki/ca.crt"
 	caCertExpireDate := runBash(fmt.Sprintf("openssl x509 -in %s -noout -enddate | awk -F \"=\" {'print $2'}", caCertPath))
@@ -1136,7 +1200,7 @@ func getOvpnCaCertExpireDate() time.Time {
 	dateLayout := "Jan 2 15:04:05 2006 MST"
 	t, err := time.Parse(dateLayout, strings.TrimSpace(caCertExpireDate))
 	if err != nil {
-		log.Printf("WARNING: can`t parse expire date for CA cert: %v", err)
+		log.Printf("WARNING: can`t parse expire date for CA cert: %v\n", err)
 		return time.Now()
 	}
 

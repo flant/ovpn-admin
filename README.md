@@ -63,7 +63,7 @@ cd ovpn-admin
 
 ### 3. Prebuilt binary (WIP)
 
-You can also download & use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
+You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
 
 ## Usage
 
@@ -86,6 +86,10 @@ Flags:
                                network for openvpn server
   --ovpn.server=HOST:PORT:PROTOCOL ...  
                                comma separated addresses for openvpn servers
+  --ovpn.server.behindLB       ovpn behind cloud loadbalancer
+  --ovpn.service="openvpn-external"  
+                               ovpn behind cloud loadbalancer k8s service name
+
   --mgmt=main=127.0.0.1:8989 ...  
                                comma separated (alias=address) for openvpn servers mgmt interfaces
   --metrics.path="/metrics"    URL path for surfacing collected metrics

@@ -3,7 +3,13 @@ set -ex
 
 EASY_RSA_LOC="/etc/openvpn/easyrsa"
 SERVER_CERT="${EASY_RSA_LOC}/pki/issued/server.crt"
+
+OVPN_SRV_NET=${OVPN_SERVER_NET:-172.16.100.0}
+OVPN_SRV_MASK=${OVPN_SERVER_MASK:-255.255.255.0}
+
+
 cd $EASY_RSA_LOC
+
 if [ -e "$SERVER_CERT" ]; then
   echo "Found existing certs - reusing"
 else
@@ -25,7 +31,8 @@ else
 fi
 easyrsa gen-crl
 
-iptables -t nat -A POSTROUTING -s 172.16.100.0/255.255.255.0 ! -d 172.16.100.0/255.255.255.0 -j MASQUERADE
+iptables -t nat -D POSTROUTING -s ${OVPN_SRV_NET}/${OVPN_SRV_MASK} ! -d ${OVPN_SRV_NET}/${OVPN_SRV_MASK} -j MASQUERADE
+iptables -t nat -A POSTROUTING -s ${OVPN_SRV_NET}/${OVPN_SRV_MASK} ! -d ${OVPN_SRV_NET}/${OVPN_SRV_MASK} -j MASQUERADE
 
 mkdir -p /dev/net
 if [ ! -c /dev/net/tun ]; then
@@ -49,5 +56,4 @@ fi
 
 mkdir -p /etc/openvpn/ccd
 
-openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd --port 1194 --proto tcp --management 127.0.0.1 8989 --dev tun0
-
+openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd --port 1194 --proto tcp --management 127.0.0.1 8989 --dev tun0 --server ${OVPN_SRV_NET} ${OVPN_SRV_MASK}

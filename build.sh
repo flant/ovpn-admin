@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 PATH=$PATH:~/go/bin
-# go get -u github.com/gobuffalo/packr/v2/packr2
+
+#go get -u github.com/gobuffalo/packr/v2/packr2
 
 cd frontend && npm install && npm run build && cd ..
 
