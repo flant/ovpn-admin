@@ -298,7 +298,7 @@ new Vue({
       var _this = this;
       axios.request(axios_cfg('api/users/list'))
         .then(function(response) {
-          _this.rows = response.data;
+          _this.rows = Array.isArray(response.data) ? response.data : [];
         });
     },
 
