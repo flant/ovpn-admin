@@ -1188,7 +1188,7 @@ func getOvpnServerHostsFromKubeApi() []OpenvpnServer {
 	if service.Status.LoadBalancer.Ingress[0].IP != "" {
 		lbHost = service.Status.LoadBalancer.Ingress[0].IP
 	}
-	hosts = append(hosts, OpenvpnServer{lbHost,strconv.Itoa(int(service.Spec.Ports[0].Port)),string(service.Spec.Ports[0].Protocol)})
+	hosts = append(hosts, OpenvpnServer{lbHost,strconv.Itoa(int(service.Spec.Ports[0].Port)),strings.ToLower(string(service.Spec.Ports[0].Protocol))})
 
 	return hosts
 }
