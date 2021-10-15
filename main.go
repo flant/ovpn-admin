@@ -578,20 +578,19 @@ func (oAdmin *OvpnAdmin) renderClientConfig(username string) string {
 		var tmp bytes.Buffer
 		err := t.Execute(&tmp, conf)
 		if err != nil {
-
-			log.Printf("WARNING: something goes wrong during rendering config for %s\n", username )
+			log.Printf("ERROR: something goes wrong during rendering config for %s\n", username )
 			if *debug {
-				log.Printf("ERROR: rendering config for %s failed \n %v\n", username, err )
-
+				log.Printf("DEBUG: rendering config for %s failed with error %v\n", username, err )
 			}
 		}
 
 		hosts = nil
-
-		fmt.Printf("%+v\n", tmp.String())
+		if *verbose {
+			log.Printf("INFO: Rendered config for user %s: %+v\n", username, tmp.String())
+		}
 		return fmt.Sprintf("%+v\n", tmp.String())
 	}
-	fmt.Printf("User \"%s\" not found", username)
+	log.Printf("WARNING: User \"%s\" not found", username)
 	return fmt.Sprintf("User \"%s\" not found", username)
 }
 
