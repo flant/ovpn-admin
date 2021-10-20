@@ -13,7 +13,7 @@ tls-client
 remote-cert-tls server
 # uncomment below lines for use with linux
 #script-security 2
-# if use use resolved
+# if you use resolved
 #up /etc/openvpn/update-resolv-conf
 #down /etc/openvpn/update-resolv-conf
 # if you use systemd-resolved first install openvpn-systemd-resolved package
