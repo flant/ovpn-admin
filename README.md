@@ -59,7 +59,7 @@ cd ovpn-admin
 ./ovpn-admin 
 ```
 
-(Please don't forgot to configure all needed params in advance.)
+(Please don't forget to configure all needed params in advance.)
 
 ### 3. Prebuilt binary (WIP)
 
