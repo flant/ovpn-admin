@@ -63,7 +63,12 @@ cd ovpn-admin
 
 ### 3. Prebuilt binary (WIP)
 
+
 You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
+
+
+###
+If you want to use password auth (`--auth` flag) you have to install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases) - just make it available throw PATH variable and don`t forget about execution rights on the binary
 
 ## Usage
 
@@ -83,32 +88,31 @@ Flags:
   --master.sync-frequency=600  master host data sync frequency in seconds.
   --master.sync-token=TOKEN    master host data sync security token
   --ovpn.network="172.16.100.0/24"  
-                               network for openvpn server
+                               NETWORK/MASK_PREFIX for openvpn server
   --ovpn.server=HOST:PORT:PROTOCOL ...  
-                               comma separated addresses for openvpn servers
-  --ovpn.server.behindLB       ovpn behind cloud loadbalancer
+                               HOST:PORT:PROTOCOL for openvpn server. multiple values
+  --ovpn.server.behindLB       ovpn behind k8s loadbalancer
   --ovpn.service="openvpn-external"  
-                               ovpn behind cloud loadbalancer k8s service name
-
+                               ovpn behind k8s service with type load balancer name
   --mgmt=main=127.0.0.1:8989 ...  
-                               comma separated (alias=address) for openvpn servers mgmt interfaces
+                               ALIAS=HOST:PORT for openvpn server mgmt interface. multiple values
   --metrics.path="/metrics"    URL path for surfacing collected metrics
   --easyrsa.path="./easyrsa/"  path to easyrsa dir
   --easyrsa.index-path="./easyrsa/pki/index.txt"  
                                path to easyrsa index file.
   --ccd                        Enable client-config-dir.
   --ccd.path="./ccd"           path to client-config-dir
-  --templates.clientconfig-path=""
-                               path to custom client.config.tpl file
-  --templates.ccd-path=""      path to custom ccd.tpl file
+  --templates.clientconfig-path=""  
+                               path to custom client.conf.tpl
+  --templates.ccd-path=""      path to custom ccd.tpl
   --auth.password              Enable additional password authorization.
   --auth.db="./easyrsa/pki/users.db"  
                                Database path fort password authorization.
   --debug                      Enable debug mode.
   --verbose                    Enable verbose mode.
   --version                    Show application version.
-
 ```
+Also you can configure ovpn-admin throw environment variables 
 
 ## Further information
 

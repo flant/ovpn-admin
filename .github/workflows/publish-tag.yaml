@@ -1,9 +1,9 @@
-name: Build and publish to Docker Hub (tags only)
+name: Build and publish tags to Docker Hub (tags only)
 on:
   push:
     tags:
       - '*'
-    
+
 jobs:
   build:
     name: build images for tag
