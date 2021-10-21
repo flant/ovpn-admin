@@ -38,42 +38,41 @@ const (
 	indexTxtDateLayout   = "060102150405Z"
 	stringDateFormat     = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "2006-01-02 15:04:05"
+
+	kubeTokenFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	kubeNamespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 )
 
 var (
-	listenHost      				 = kingpin.Flag("listen.host","host for ovpn-admin").Default("0.0.0.0").String()
-	listenPort      				 = kingpin.Flag("listen.port","port for ovpn-admin").Default("8080").String()
-	serverRole               = kingpin.Flag("role","server role master or slave").Default("master").HintOptions("master", "slave").String()
-	masterHost               = kingpin.Flag("master.host","url for master server").Default("http://127.0.0.1").String()
-	masterBasicAuthUser			 = kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").String()
-	masterBasicAuthPassword  = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").String()
-	masterSyncFrequency      = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Int()
-	masterSyncToken          = kingpin.Flag("master.sync-token", "master host data sync security token").Default("VerySecureToken").PlaceHolder("TOKEN").String()
-	openvpnNetwork           = kingpin.Flag("ovpn.network","network for openvpn server").Default("172.16.100.0/24").String()
-	openvpnServer      			 = kingpin.Flag("ovpn.server","comma separated addresses for openvpn servers").Default("127.0.0.1:7777:tcp").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
-	openvpnServerBehindLB 	 = kingpin.Flag("ovpn.server.behindLB","ovpn behind cloud loadbalancer").Default("false").Bool()
-	openvpnServiceName 			 = kingpin.Flag("ovpn.service","ovpn behind cloud loadbalancer k8s service name").Default("openvpn-external").String()
-	mgmtAddress		    			 = kingpin.Flag("mgmt","comma separated (alias=address) for openvpn servers mgmt interfaces").Default("main=127.0.0.1:8989").Strings()
-	metricsPath 						 = kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").String()
-	easyrsaDirPath     			 = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").String()
-	indexTxtPath    				 = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("./easyrsa/pki/index.txt").String()
-	ccdEnabled  						 = kingpin.Flag("ccd", "Enable client-config-dir.").Default("false").Bool()
-	ccdDir          				 = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").String()
-	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").String()
-	ccdTemplatePath          = kingpin.Flag("templates.ccd-path", "path to custom ccd.tpl").Default("").String()
-	authByPassword 					 = kingpin.Flag("auth.password", "Enable additional password authorization.").Default("false").Bool()
-	authDatabase 						 = kingpin.Flag("auth.db", "Database path fort password authorization.").Default("./easyrsa/pki/users.db").String()
-	debug           				 = kingpin.Flag("debug", "Enable debug mode.").Default("false").Bool()
-	verbose           			 = kingpin.Flag("verbose", "Enable verbose mode.").Default("false").Bool()
+	listenHost      				 = kingpin.Flag("listen.host","host for ovpn-admin").Default("0.0.0.0").Envar("OVPN_LISTEN_HOST").String()
+	listenPort      				 = kingpin.Flag("listen.port","port for ovpn-admin").Default("8080").Envar("OVPN_LISTEN_PROT").String()
+	serverRole               = kingpin.Flag("role","server role master or slave").Default("master").Envar("OVPN_ROLE").HintOptions("master", "slave").String()
+	masterHost               = kingpin.Flag("master.host","url for master server").Default("http://127.0.0.1").Envar("OVPN_MASTER_HOST").String()
+	masterBasicAuthUser			 = kingpin.Flag("master.basic-auth.user","user for basic auth on master server url").Default("").Envar("OVPN_MASTER_USER").String()
+	masterBasicAuthPassword  = kingpin.Flag("master.basic-auth.password","password for basic auth on master server url").Default("").Envar("OVPN_MASTER_PASSWORD").String()
+	masterSyncFrequency      = kingpin.Flag("master.sync-frequency", "master host data sync frequency in seconds.").Default("600").Envar("OVPN_MASTER_SYNC_FREQUENCY").Int()
+	masterSyncToken          = kingpin.Flag("master.sync-token", "master host data sync security token").Default("VerySecureToken").Envar("OVPN_MASTER_TOKEN").PlaceHolder("TOKEN").String()
+	openvpnNetwork           = kingpin.Flag("ovpn.network","NETWORK/MASK_PREFIX for openvpn server").Default("172.16.100.0/24").Envar("OVPN_NETWORK").String()
+	openvpnServer      			 = kingpin.Flag("ovpn.server","HOST:PORT:PROTOCOL for openvpn server. multiple values").Default("127.0.0.1:7777:tcp").Envar("OVPN_SERVER").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
+	openvpnServerBehindLB 	 = kingpin.Flag("ovpn.server.behindLB","ovpn behind k8s loadbalancer").Default("false").Envar("OVPN_LB").Bool()
+	openvpnServiceName 			 = kingpin.Flag("ovpn.service","ovpn behind k8s service with type load balancer name").Default("openvpn-external").Envar("OVPN_LB_SERVICE").String()
+	mgmtAddress		    			 = kingpin.Flag("mgmt","ALIAS=HOST:PORT for openvpn server mgmt interface. multiple values").Default("main=127.0.0.1:8989").Envar("OVPN_MGMT").Strings()
+	metricsPath 						 = kingpin.Flag("metrics.path",  "URL path for surfacing collected metrics").Default("/metrics").Envar("OVPN_METRICS_PATH").String()
+	easyrsaDirPath     			 = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").Envar("EASYRSA_PATH").String()
+	indexTxtPath    				 = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file.").Default("./easyrsa/pki/index.txt").Envar("OVPN_INDEX_PATH").String()
+	ccdEnabled  						 = kingpin.Flag("ccd", "Enable client-config-dir.").Default("false").Envar("OVPN_CCD").Bool()
+	ccdDir          				 = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").Envar("OVPN_CCD_PATH").String()
+	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").Envar("OVPN_TEMPLATES_CCD_PATH").String()
+	ccdTemplatePath          = kingpin.Flag("templates.ccd-path", "path to custom ccd.tpl").Default("").Envar("OVPN_TEMPLATES_CCD_PATH").String()
+	authByPassword 					 = kingpin.Flag("auth.password", "Enable additional password authorization.").Default("false").Envar("OVPN_AUTH").Bool()
+	authDatabase 						 = kingpin.Flag("auth.db", "Database path fort password authorization.").Default("./easyrsa/pki/users.db").Envar("OVPN_AUTH_DB_PATH").String()
+	debug           				 = kingpin.Flag("debug", "Enable debug mode.").Default("false").Envar("OVPN_DEBUG").Bool()
+	verbose           			 = kingpin.Flag("verbose", "Enable verbose mode.").Default("false").Envar("OVPN_VERBOSE").Bool()
 
 	certsArchivePath         = "/tmp/" + certsArchiveFileName
 	ccdArchivePath           = "/tmp/" + ccdArchiveFileName
 
-	version = "1.7.0"
-
-	kubeTokenFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/token"
-	kubeNamespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-
+	version = "1.7.4"
 )
 
 var (
@@ -431,6 +430,14 @@ func main() {
 		go ovpnAdmin.syncWithMaster()
 	}
 
+	if *debug {
+		log.Println("Runnnig in debug mode")
+	}
+
+	if *verbose {
+		log.Println("Runnnig in verbose mode")
+	}
+
 	ovpnAdmin.templates = packr.New("template", "./templates")
 
 	staticBox := packr.New("static", "./frontend/static")
@@ -459,7 +466,7 @@ func main() {
 		fmt.Fprintf(w, "pong")
 	})
 
-	fmt.Println("Bind: http://" + *listenHost + ":" + *listenPort)
+	log.Printf("Bind: http://%s:%s\n", *listenHost, *listenPort)
 	log.Fatal(http.ListenAndServe(*listenHost+":"+*listenPort, nil))
 }
 
