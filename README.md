@@ -12,7 +12,8 @@ Originally created in [Flant](https://flant.com/) for internal needs & used for 
 * Providing metrics for Prometheus, including certificates expiration date, number of (connected/total) users, information about connected users;
 * (optionally) Specifying CCD (`client-config-dir`) for each user;
 * (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
-* (optionally) Specifying/changing password for additional authorization in OpenVPN.
+* (optionally) Specifying/changing password for additional authorization in OpenVPN;
+* (optionally) Specifying the Kubernetes LoadBalancer if it's used in front of the OpenVPN server (to get an automatically defined `remote` in the `client.conf.tpl` template).
 
 ### Screenshots
 
@@ -63,12 +64,9 @@ cd ovpn-admin
 
 ### 3. Prebuilt binary (WIP)
 
-
 You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
 
-
-###
-If you want to use password auth (`--auth` flag) you have to install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases) - just make it available throw PATH variable and don`t forget about execution rights on the binary
+To use password authentication (the `--auth` flag) you have to install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases). This tool should be available in your `$PATH` and its binary should be executable (`+x`).
 
 ## Usage
 
@@ -76,43 +74,85 @@ If you want to use password auth (`--auth` flag) you have to install [openvpn-us
 usage: ovpn-admin [<flags>]
 
 Flags:
-  --help                       Show context-sensitive help (also try --help-long and --help-man).
+  --help                       show context-sensitive help (try also --help-long and --help-man)
+
   --listen.host="0.0.0.0"      host for ovpn-admin
+  (or $OVPN_LISTEN_HOST)
+
   --listen.port="8080"         port for ovpn-admin
-  --role="master"              server role master or slave
+  (or $OVPN_LISTEN_PROT)
+
+  --role="master"              server role, master or slave
+  (or $OVPN_ROLE)
+
   --master.host="http://127.0.0.1"  
-                               url for master server
-  --master.basic-auth.user=""  user for basic auth on master server url
+  (or $OVPN_MASTER_HOST)       URL for the master server
+
+  --master.basic-auth.user=""  user for Basic Auth on the master server
+  (or $OVPN_MASTER_USER)
+ 
   --master.basic-auth.password=""  
-                               password for basic auth on master server url
-  --master.sync-frequency=600  master host data sync frequency in seconds.
+  (or $OVPN_MASTER_PASSWORD)   password for Basic Auth on master server
+
+  --master.sync-frequency=600  master host data sync frequency in seconds
+  (or $OVPN_MASTER_SYNC_FREQUENCY)
+
   --master.sync-token=TOKEN    master host data sync security token
+  (or $OVPN_MASTER_TOKEN)
+
   --ovpn.network="172.16.100.0/24"  
-                               NETWORK/MASK_PREFIX for openvpn server
+  (or $OVPN_NETWORK)           NETWORK/MASK_PREFIX for OpenVPN server
+
   --ovpn.server=HOST:PORT:PROTOCOL ...  
-                               HOST:PORT:PROTOCOL for openvpn server. multiple values
-  --ovpn.server.behindLB       ovpn behind k8s loadbalancer
+  (or $OVPN_SERVER)            HOST:PORT:PROTOCOL for OpenVPN server
+                               can have multiple values
+
+  --ovpn.server.behindLB       enable if your OpenVPN server is behind Kubernetes
+  (or $OVPN_LB)                Service having the LoadBalancer type
+
   --ovpn.service="openvpn-external"  
-                               ovpn behind k8s service with type load balancer name
+  (or $OVPN_LB_SERVICE)        the name of Kubernetes Service having the LoadBalancer
+                               type if your OpenVPN server is behind it
+
   --mgmt=main=127.0.0.1:8989 ...  
-                               ALIAS=HOST:PORT for openvpn server mgmt interface. multiple values
-  --metrics.path="/metrics"    URL path for surfacing collected metrics
+  (or $OVPN_MGMT)              ALIAS=HOST:PORT for OpenVPN server mgmt interface;
+                               can have multiple values
+
+  --metrics.path="/metrics"    URL path for exposing collected metrics
+  (or $OVPN_METRICS_PATH)
+
   --easyrsa.path="./easyrsa/"  path to easyrsa dir
+  (or $EASYRSA_PATH)
+
   --easyrsa.index-path="./easyrsa/pki/index.txt"  
-                               path to easyrsa index file.
-  --ccd                        Enable client-config-dir.
+  (or $OVPN_INDEX_PATH)        path to easyrsa index file
+
+  --ccd                        enable client-config-dir
+  (or $OVPN_CCD)
+
   --ccd.path="./ccd"           path to client-config-dir
+  (or $OVPN_CCD_PATH)
+
   --templates.clientconfig-path=""  
-                               path to custom client.conf.tpl
+  (or $OVPN_TEMPLATES_CC_PATH) path to custom client.conf.tpl
+
   --templates.ccd-path=""      path to custom ccd.tpl
-  --auth.password              Enable additional password authorization.
-  --auth.db="./easyrsa/pki/users.db"  
-                               Database path fort password authorization.
-  --debug                      Enable debug mode.
-  --verbose                    Enable verbose mode.
-  --version                    Show application version.
+  (or $OVPN_TEMPLATES_CCD_PATH)
+
+  --auth.password              enable additional password authorization
+  (or $OVPN_AUTH)
+
+  --auth.db="./easyrsa/pki/users.db"
+  (or $OVPN_AUTH_DB_PATH)      database path for password authorization
+
+  --debug                      enable debug mode
+  (or $OVPN_DEBUG)
+
+  --verbose                    enable verbose mode
+  (or $OVPN_VERBOSE)
+ 
+  --version                    show application version
 ```
-Also you can configure ovpn-admin throw environment variables 
 
 ## Further information
 
