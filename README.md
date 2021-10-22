@@ -88,11 +88,11 @@ Flags:
   --master.host="http://127.0.0.1"  
   (or $OVPN_MASTER_HOST)       URL for the master server
 
-  --master.basic-auth.user=""  user for Basic Auth on the master server
+  --master.basic-auth.user=""  user for master server's Basic Auth
   (or $OVPN_MASTER_USER)
  
   --master.basic-auth.password=""  
-  (or $OVPN_MASTER_PASSWORD)   password for Basic Auth on master server
+  (or $OVPN_MASTER_PASSWORD)   password for master server's Basic Auth
 
   --master.sync-frequency=600  master host data sync frequency in seconds
   (or $OVPN_MASTER_SYNC_FREQUENCY)
