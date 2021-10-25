@@ -1126,7 +1126,7 @@ func unArchive(src, dst string) error {
 		dstPath := filepath.Join(dst, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(dstPath, 0755); err != nil {
+			if err := os.MkdirAll(dstPath, 0755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
@@ -1155,6 +1155,8 @@ func archive(src, dst string) error {
 
 	zr := gzip.NewWriter(out)
 	tw := tar.NewWriter(zr)
+	defer tw.Close()
+	defer zr.Close()
 	err = filepath.Walk(src, func(file string, fi os.FileInfo, err error) error {
 		header, err := tar.FileInfoHeader(fi, file)
 		if err != nil {
@@ -1176,12 +1178,6 @@ func archive(src, dst string) error {
 		return nil
 	})
 	if err != nil {
-		return err
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	if err := zr.Close(); err != nil {
 		return err
 	}
 	return nil
