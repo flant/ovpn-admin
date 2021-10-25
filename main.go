@@ -13,10 +13,12 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"text/template"
 	"time"
 
@@ -565,11 +567,31 @@ func main() {
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(ovpnAdmin.promRegistry, promhttp.HandlerOpts{}))
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "pong")
+		fmt.Fprint(w, "pong")
 	})
 
-	log.Printf("Bind: http://%s:%s\n", *listenHost, *listenPort)
-	log.Fatal(http.ListenAndServe(*listenHost+":"+*listenPort, nil))
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	bind := net.JoinHostPort(*listenHost, *listenPort)
+	srv := &http.Server{Addr: bind, Handler: nil}
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+	log.Printf("http server started on http://%s\n", bind)
+
+	<-done
+	log.Print("http server stopped...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer func() {
+		cancel()
+	}()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Server Shutdown Failed:%+v", err)
+	}
 }
 
 func CacheControlWrapper(h http.Handler) http.Handler {
