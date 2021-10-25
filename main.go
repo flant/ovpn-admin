@@ -1193,11 +1193,10 @@ func archive(src, dst string) error {
 			if err != nil {
 				return err
 			}
+			defer f.Close()
 			if _, err := io.Copy(tw, f); err != nil {
-				f.Close()
 				return err
 			}
-			f.Close()
 		}
 		return nil
 	})
