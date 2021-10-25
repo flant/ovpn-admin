@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func parseDate(layout,datetime string) time.Time {
+func parseDate(layout, datetime string) time.Time {
 	t, err := time.Parse(layout, datetime)
 	if err != nil {
 		log.Println(err)
@@ -18,11 +18,11 @@ func parseDate(layout,datetime string) time.Time {
 	return t
 }
 
-func parseDateToString(layout,datetime,format string) string {
+func parseDateToString(layout, datetime, format string) string {
 	return parseDate(layout, datetime).Format(format)
 }
 
-func parseDateToUnix(layout,datetime string) int64 {
+func parseDateToUnix(layout, datetime string) int64 {
 	return parseDate(layout, datetime).Unix()
 }
 
@@ -100,7 +100,7 @@ func fDownload(path, url string, basicAuth bool) error {
 	}
 
 	if resp.StatusCode != 200 {
-		log.Printf("WARNING: Download file operation for url %s finished with status code %d\n", url, resp.StatusCode  )
+		log.Printf("WARNING: Download file operation for url %s finished with status code %d\n", url, resp.StatusCode)
 	}
 	defer resp.Body.Close()
 
