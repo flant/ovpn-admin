@@ -3,7 +3,7 @@ COPY frontend/ /app
 RUN cd /app && npm install && npm run build
 
 FROM golang:1.14.2-buster AS backend-builder
-RUN go get -u github.com/gobuffalo/packr/v2/packr2
+RUN go get -u github.com/gobuffalo/packr/packr2
 COPY --from=frontend-builder /app/static /app/frontend/static
 COPY . /app
 RUN cd /app && packr2 && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-linkmode external -extldflags "-static" -s -w' -o ovpn-admin && packr2 clean
