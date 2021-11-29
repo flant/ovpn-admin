@@ -23,7 +23,7 @@ jobs:
           goversion: 1.17
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
-          build_command: bash ./build_arm.sh
-          pre_command: bash ./install-deps-arm.sh
+          build_command: bash -ex ./build_arm.sh
+          pre_command: bash -ex ./install-deps-arm.sh
           binary_name: "ovpn-admin"
           asset_name: ovpn-admin-${{ matrix.goos }}-${{ matrix.goarch }}
