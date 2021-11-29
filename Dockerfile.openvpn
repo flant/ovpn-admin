@@ -1,4 +1,4 @@
-FROM alpine:3.13
+FROM alpine:3.14
 RUN apk add --update bash openvpn easy-rsa  && \
     ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin && \
     wget https://github.com/pashcovich/openvpn-user/releases/download/v1.0.3/openvpn-user-linux-amd64.tar.gz -O - | tar xz -C /usr/local/bin && \
