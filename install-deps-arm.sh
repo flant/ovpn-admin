@@ -9,4 +9,4 @@ apt-get install -y nodejs
 
 PATH=$PATH:~/go/bin
 
-go get -u github.com/gobuffalo/packr/packr2
+go install github.com/gobuffalo/packr/v2/packr2@latest
