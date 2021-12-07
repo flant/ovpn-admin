@@ -36,6 +36,8 @@ const (
 	indexTxtDateLayout   = "060102150405Z"
 	stringDateFormat     = "2006-01-02 15:04:05"
 	ovpnStatusDateLayout = "2006-01-02 15:04:05"
+	downloadCertsApiUrl  = "api/data/certs/download"
+	downloadCcdApiUrl    = "api/data/ccd/download"
 
 	kubeTokenFilePath     = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 	kubeNamespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
@@ -69,13 +71,13 @@ var (
 	debug           				 = kingpin.Flag("debug", "enable debug mode").Default("false").Envar("OVPN_DEBUG").Bool()
 	verbose           			 = kingpin.Flag("verbose", "enable verbose mode").Default("false").Envar("OVPN_VERBOSE").Bool()
 
-	downloadCertsApiUrl  = *listenBaseUrl + "api/data/certs/download"
-	downloadCcdApiUrl    = *listenBaseUrl + "api/data/ccd/download"
-    
 	certsArchivePath         = "/tmp/" + certsArchiveFileName
 	ccdArchivePath           = "/tmp/" + ccdArchiveFileName
 
 	version = "1.7.5"
+)
+
+var (
 )
 
 var (
@@ -461,8 +463,8 @@ func main() {
 
 	http.HandleFunc(*listenBaseUrl + "api/sync/last/try", ovpnAdmin.lastSyncTimeHandler)
 	http.HandleFunc(*listenBaseUrl + "api/sync/last/successful", ovpnAdmin.lastSuccessfulSyncTimeHandler)
-	http.HandleFunc(downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
-	http.HandleFunc(downloadCcdApiUrl, ovpnAdmin.downloadCcdHandler)
+	http.HandleFunc(*listenBaseUrl + downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
+	http.HandleFunc(*listenBaseUrl + downloadCcdApiUrl, ovpnAdmin.downloadCcdHandler)
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(ovpnAdmin.promRegistry, promhttp.HandlerOpts{}))
 	http.HandleFunc(*listenBaseUrl + "ping", func(w http.ResponseWriter, r *http.Request) {
@@ -1076,7 +1078,7 @@ func (oAdmin *OvpnAdmin) downloadCerts() bool {
 	if fExist(certsArchivePath) {
 		fDelete(certsArchivePath)
 	}
-	err := fDownload(certsArchivePath, *masterHost+downloadCertsApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
+	err := fDownload(certsArchivePath, *masterHost+*listenBaseUrl+downloadCertsApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
 	if err != nil {
 		log.Println(err)
 		return false
@@ -1090,7 +1092,7 @@ func (oAdmin *OvpnAdmin) downloadCcd() bool {
 		fDelete(ccdArchivePath)
 	}
 
-	err := fDownload(ccdArchivePath, *masterHost+downloadCcdApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
+	err := fDownload(ccdArchivePath, *masterHost+*listenBaseUrl+downloadCcdApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
 	if err != nil {
 		log.Println(err)
 		return false
