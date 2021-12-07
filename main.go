@@ -59,6 +59,7 @@ var (
 	metricsPath 						 = kingpin.Flag("metrics.path",  "URL path for exposing collected metrics").Default("/metrics").Envar("OVPN_METRICS_PATH").String()
 	easyrsaDirPath     			 = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa/").Envar("EASYRSA_PATH").String()
 	indexTxtPath    				 = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file").Default("./easyrsa/pki/index.txt").Envar("OVPN_INDEX_PATH").String()
+    easyrsaBinPath               = kingpin.Flag("easyrsa.bin-path", "path to easyrsa script").Default("easyrsa").Envar("EASYRSA_BIN_PATH").String()
 	ccdEnabled  						 = kingpin.Flag("ccd", "enable client-config-dir").Default("false").Envar("OVPN_CCD").Bool()
 	ccdDir          				 = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").Envar("OVPN_CCD_PATH").String()
 	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").Envar("OVPN_TEMPLATES_CC_PATH").String()
@@ -850,7 +851,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 		}
 	}
 
-	o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && easyrsa build-client-full %s nopass", *easyrsaDirPath, username))
+	o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && %s build-client-full %s nopass", *easyrsaDirPath, *easyrsaBinPath, username))
 	log.Println(o)
 
 	if *authByPassword {
@@ -911,7 +912,7 @@ func (oAdmin *OvpnAdmin) getUserStatistic(username string) clientStatus {
 func (oAdmin *OvpnAdmin) userRevoke(username string) string {
 	if checkUserExist(username) {
 		// check certificate valid flag 'V'
-		o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && echo yes | easyrsa revoke %s && easyrsa gen-crl", *easyrsaDirPath, username))
+		o := runBash(fmt.Sprintf("date +%%Y-%%m-%%d\\ %%H:%%M:%%S && cd %s && echo yes | %s revoke %s && %s gen-crl", *easyrsaDirPath, *easyrsaBinPath, username, *easyrsaBinPath))
 		if *authByPassword {
 			o = runBash(fmt.Sprintf("openvpn-user revoke --db-path %s --user %s", *authDatabase, username))
 			//fmt.Println(o)
@@ -949,7 +950,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) string {
 					//fmt.Println(o)
 					fWrite(*indexTxtPath, renderIndexTxt(usersFromIndexTxt))
 					//fmt.Print(renderIndexTxt(usersFromIndexTxt))
-					o = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl", *easyrsaDirPath))
+					o = runBash(fmt.Sprintf("cd %s && %s gen-crl", *easyrsaDirPath, *easyrsaBinPath))
 					//fmt.Println(o)
 					if *authByPassword {
 						o = runBash(fmt.Sprintf("openvpn-user restore --db-path %s --user %s", *authDatabase, username))
