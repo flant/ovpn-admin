@@ -1,4 +1,4 @@
-FROM node:14.2-alpine3.11 AS frontend-builder
+FROM node:16.13.0-alpine3.12 AS frontend-builder
 COPY frontend/ /app
 RUN cd /app && npm install && npm run build
 
