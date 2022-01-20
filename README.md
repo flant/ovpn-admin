@@ -16,6 +16,7 @@ Originally created in [Flant](https://flant.com/) for internal needs & used for 
 * (optionally) Operating in a master/slave mode (syncing certs & CCD with other server);
 * (optionally) Specifying/changing password for additional authorization in OpenVPN;
 * (optionally) Specifying the Kubernetes LoadBalancer if it's used in front of the OpenVPN server (to get an automatically defined `remote` in the `client.conf.tpl` template).
+* (optionally) Storing certificates and other files in Kubernetes Secrets (**Attention, this feature is experimental!**).
 
 ### Screenshots
 
@@ -152,6 +153,15 @@ Flags:
 
   --verbose                    enable verbose mode
   (or $OVPN_VERBOSE)
+  
+  --log.level                  set log level: trace, debug, info, warn, error (default info)
+  (or $LOG_LEVEL)
+  
+  --log.format                 set log format: text, json (default text)
+  (or $LOG_FORMAT)
+  
+  --storage.backend            storage backend: filesystem, kubernetes.secrets (default filesystem)
+  (or $STORAGE_BACKEND)
  
   --version                    show application version
 ```
