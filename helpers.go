@@ -3,17 +3,18 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func parseDate(layout,datetime string) time.Time {
 	t, err := time.Parse(layout, datetime)
 	if err != nil {
-		log.Println(err)
+		log.Errorln(err)
 	}
 	return t
 }
@@ -27,9 +28,7 @@ func parseDateToUnix(layout,datetime string) int64 {
 }
 
 func runBash(script string) string {
-	if *debug {
-		log.Println(script)
-	}
+	log.Debugln(script)
 	cmd := exec.Command("bash", "-c", script)
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
@@ -65,7 +64,7 @@ func fCreate(path string) bool {
 	if os.IsNotExist(err) {
 		var file, err = os.Create(path)
 		if err != nil {
-			log.Println(err)
+			log.Errorln(err)
 			return false
 		}
 		defer file.Close()
@@ -100,7 +99,7 @@ func fDownload(path, url string, basicAuth bool) error {
 	}
 
 	if resp.StatusCode != 200 {
-		log.Printf("WARNING: Download file operation for url %s finished with status code %d\n", url, resp.StatusCode  )
+		log.Warnf("WARNING: Download file operation for url %s finished with status code %d\n", url, resp.StatusCode  )
 	}
 	defer resp.Body.Close()
 
