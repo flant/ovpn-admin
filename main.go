@@ -55,7 +55,7 @@ var (
 	openvpnNetwork           = kingpin.Flag("ovpn.network", "NETWORK/MASK_PREFIX for OpenVPN server").Default("172.16.100.0/24").Envar("OVPN_NETWORK").String()
 	openvpnServer            = kingpin.Flag("ovpn.server", "HOST:PORT:PROTOCOL for OpenVPN server; can have multiple values").Default("127.0.0.1:7777:tcp").Envar("OVPN_SERVER").PlaceHolder("HOST:PORT:PROTOCOL").Strings()
 	openvpnServerBehindLB    = kingpin.Flag("ovpn.server.behindLB", "enable if your OpenVPN server is behind Kubernetes Service having the LoadBalancer type").Default("false").Envar("OVPN_LB").Bool()
-	openvpnServiceName       = kingpin.Flag("ovpn.service", "the name of Kubernetes Service having the LoadBalancer type if your OpenVPN server is behind it").Default("openvpn-external").Envar("OVPN_LB_SERVICE").String()
+	openvpnServiceName       = kingpin.Flag("ovpn.service", "the name of Kubernetes Service having the LoadBalancer type if your OpenVPN server is behind it").Default("openvpn-external").Envar("OVPN_LB_SERVICE").Strings()
 	mgmtAddress              = kingpin.Flag("mgmt", "ALIAS=HOST:PORT for OpenVPN server mgmt interface; can have multiple values").Default("main=127.0.0.1:8989").Envar("OVPN_MGMT").Strings()
 	metricsPath              = kingpin.Flag("metrics.path", "URL path for exposing collected metrics").Default("/metrics").Envar("OVPN_METRICS_PATH").String()
 	easyrsaDirPath           = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa").Envar("EASYRSA_PATH").String()
@@ -1304,28 +1304,33 @@ func getOvpnServerHostsFromKubeApi() ([]OpenvpnServer, error) {
 		log.Errorf("%s", err.Error())
 	}
 
-	service, err := clientset.CoreV1().Services(fRead(kubeNamespaceFilePath)).Get(context.TODO(), *openvpnServiceName, metav1.GetOptions{})
-	if err != nil {
-		log.Error(err)
-		return []OpenvpnServer{{Host: "service " + *openvpnServiceName + " not found"}}, err
-	}
-
-	log.Tracef("Debug: service from kube api %v", service)
-	log.Tracef("Debug: service.Status from kube api %v", service.Status)
-	log.Tracef("Debug: service.Status.LoadBalancer from kube api %v", service.Status.LoadBalancer)
-
-	lbIngress := service.Status.LoadBalancer.Ingress
-	if len(lbIngress) > 0 {
-		if lbIngress[0].Hostname != "" {
-			lbHost = lbIngress[0].Hostname
+	for _, serviceName := range *openvpnServiceName {
+		service, err := clientset.CoreV1().Services(fRead(kubeNamespaceFilePath)).Get(context.TODO(), serviceName, metav1.GetOptions{})
+		if err != nil {
+			log.Error(err)
 		}
 
-		if lbIngress[0].IP != "" {
-			lbHost = lbIngress[0].IP
+		log.Tracef("Debug: service from kube api %v", service)
+		log.Tracef("Debug: service.Status from kube api %v", service.Status)
+		log.Tracef("Debug: service.Status.LoadBalancer from kube api %v", service.Status.LoadBalancer)
+
+		lbIngress := service.Status.LoadBalancer.Ingress
+		if len(lbIngress) > 0 {
+			if lbIngress[0].Hostname != "" {
+				lbHost = lbIngress[0].Hostname
+			}
+
+			if lbIngress[0].IP != "" {
+				lbHost = lbIngress[0].IP
+			}
 		}
+
+		hosts = append(hosts, OpenvpnServer{lbHost, strconv.Itoa(int(service.Spec.Ports[0].Port)), strings.ToLower(string(service.Spec.Ports[0].Protocol))})
 	}
 
-	hosts = append(hosts, OpenvpnServer{lbHost, strconv.Itoa(int(service.Spec.Ports[0].Port)), strings.ToLower(string(service.Spec.Ports[0].Protocol))})
+	if len(hosts) == 0 {
+		return []OpenvpnServer{{Host: "kubernetes services not found"}}, err
+	}
 
 	return hosts, nil
 }
