@@ -523,7 +523,7 @@ func (openVPNPKI *OpenVPNPKI) updateFilesFromSecrets() (err error) {
 func (openVPNPKI *OpenVPNPKI) updateCRLOnDisk() (err error) {
 	secret, err := openVPNPKI.secretGetByName(secretCRL)
 	crl := secret.Data["crl.pem"]
-	err = ioutil.WriteFile(fmt.Sprintf("%s/pki/crl.pem", *easyrsaDirPath), crl, 0600)
+	err = ioutil.WriteFile(fmt.Sprintf("%s/pki/crl.pem", *easyrsaDirPath), crl, 0644)
 	if err != nil {
 		log.Errorf("error write crl.pem:%s", err.Error())
 	}
