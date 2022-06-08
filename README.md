@@ -83,7 +83,7 @@ Flags:
   (or $OVPN_LISTEN_HOST)
 
   --listen.port="8080"         port for ovpn-admin
-  (or $OVPN_LISTEN_PROT)
+  (or $OVPN_LISTEN_PORT)
 
   --role="master"              server role, master or slave
   (or $OVPN_ROLE)
