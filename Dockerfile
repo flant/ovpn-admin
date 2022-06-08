@@ -3,6 +3,7 @@ COPY frontend/ /app
 RUN cd /app && npm install && npm run build
 
 FROM golang:1.17.3-buster AS backend-builder
+RUN go env -w GOPROXY=https://goproxy.cn
 RUN go install github.com/gobuffalo/packr/v2/packr2@latest
 COPY --from=frontend-builder /app/static /app/frontend/static
 COPY . /app

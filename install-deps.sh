@@ -9,4 +9,5 @@ apt-get install -y nodejs
 
 PATH=$PATH:~/go/bin
 
+go env -w GOPROXY=https://goproxy.cn
 go install github.com/gobuffalo/packr/v2/packr2@latest
