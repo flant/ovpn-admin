@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    name: build latest images for relase
+    name: build latest images for release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

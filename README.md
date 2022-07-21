@@ -65,10 +65,12 @@ cd ovpn-admin
 
 (Please don't forget to configure all needed params in advance.)
 
-### 3. Prebuilt binary (WIP)
+### 3. Prebuilt binary
 
 You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
 
+
+## Notes
 To use password authentication (the `--auth` flag) you have to install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases). This tool should be available in your `$PATH` and its binary should be executable (`+x`).
 
 ## Usage
@@ -80,88 +82,88 @@ Flags:
   --help                       show context-sensitive help (try also --help-long and --help-man)
 
   --listen.host="0.0.0.0"      host for ovpn-admin
-  (or $OVPN_LISTEN_HOST)
+  (or OVPN_LISTEN_HOST)
 
   --listen.port="8080"         port for ovpn-admin
-  (or $OVPN_LISTEN_PROT)
+  (or OVPN_LISTEN_PROT)
 
   --role="master"              server role, master or slave
-  (or $OVPN_ROLE)
+  (or OVPN_ROLE)
 
   --master.host="http://127.0.0.1"  
-  (or $OVPN_MASTER_HOST)       URL for the master server
+  (or OVPN_MASTER_HOST)       URL for the master server
 
   --master.basic-auth.user=""  user for master server's Basic Auth
-  (or $OVPN_MASTER_USER)
+  (or OVPN_MASTER_USER)
  
   --master.basic-auth.password=""  
-  (or $OVPN_MASTER_PASSWORD)   password for master server's Basic Auth
+  (or OVPN_MASTER_PASSWORD)   password for master server's Basic Auth
 
   --master.sync-frequency=600  master host data sync frequency in seconds
-  (or $OVPN_MASTER_SYNC_FREQUENCY)
+  (or OVPN_MASTER_SYNC_FREQUENCY)
 
   --master.sync-token=TOKEN    master host data sync security token
-  (or $OVPN_MASTER_TOKEN)
+  (or OVPN_MASTER_TOKEN)
 
   --ovpn.network="172.16.100.0/24"  
-  (or $OVPN_NETWORK)           NETWORK/MASK_PREFIX for OpenVPN server
+  (or OVPN_NETWORK)           NETWORK/MASK_PREFIX for OpenVPN server
 
   --ovpn.server=HOST:PORT:PROTOCOL ...  
-  (or $OVPN_SERVER)            HOST:PORT:PROTOCOL for OpenVPN server
+  (or OVPN_SERVER)            HOST:PORT:PROTOCOL for OpenVPN server
                                can have multiple values
 
   --ovpn.server.behindLB       enable if your OpenVPN server is behind Kubernetes
-  (or $OVPN_LB)                Service having the LoadBalancer type
+  (or OVPN_LB)                Service having the LoadBalancer type
 
   --ovpn.service="openvpn-external"  
-  (or $OVPN_LB_SERVICE)        the name of Kubernetes Service having the LoadBalancer
+  (or OVPN_LB_SERVICE)        the name of Kubernetes Service having the LoadBalancer
                                type if your OpenVPN server is behind it
 
   --mgmt=main=127.0.0.1:8989 ...  
-  (or $OVPN_MGMT)              ALIAS=HOST:PORT for OpenVPN server mgmt interface;
+  (or OVPN_MGMT)              ALIAS=HOST:PORT for OpenVPN server mgmt interface;
                                can have multiple values
 
   --metrics.path="/metrics"    URL path for exposing collected metrics
-  (or $OVPN_METRICS_PATH)
+  (or OVPN_METRICS_PATH)
 
   --easyrsa.path="./easyrsa/"  path to easyrsa dir
-  (or $EASYRSA_PATH)
+  (or EASYRSA_PATH)
 
   --easyrsa.index-path="./easyrsa/pki/index.txt"  
-  (or $OVPN_INDEX_PATH)        path to easyrsa index file
+  (or OVPN_INDEX_PATH)        path to easyrsa index file
 
   --ccd                        enable client-config-dir
-  (or $OVPN_CCD)
+  (or OVPN_CCD)
 
   --ccd.path="./ccd"           path to client-config-dir
-  (or $OVPN_CCD_PATH)
+  (or OVPN_CCD_PATH)
 
   --templates.clientconfig-path=""  
-  (or $OVPN_TEMPLATES_CC_PATH) path to custom client.conf.tpl
+  (or OVPN_TEMPLATES_CC_PATH) path to custom client.conf.tpl
 
   --templates.ccd-path=""      path to custom ccd.tpl
-  (or $OVPN_TEMPLATES_CCD_PATH)
+  (or OVPN_TEMPLATES_CCD_PATH)
 
   --auth.password              enable additional password authorization
-  (or $OVPN_AUTH)
+  (or OVPN_AUTH)
 
   --auth.db="./easyrsa/pki/users.db"
-  (or $OVPN_AUTH_DB_PATH)      database path for password authorization
+  (or OVPN_AUTH_DB_PATH)      database path for password authorization
 
   --debug                      enable debug mode
-  (or $OVPN_DEBUG)
+  (or OVPN_DEBUG)
 
   --verbose                    enable verbose mode
-  (or $OVPN_VERBOSE)
+  (or OVPN_VERBOSE)
   
   --log.level                  set log level: trace, debug, info, warn, error (default info)
-  (or $LOG_LEVEL)
+  (or LOG_LEVEL)
   
   --log.format                 set log format: text, json (default text)
-  (or $LOG_FORMAT)
+  (or LOG_FORMAT)
   
   --storage.backend            storage backend: filesystem, kubernetes.secrets (default filesystem)
-  (or $STORAGE_BACKEND)
+  (or STORAGE_BACKEND)
  
   --version                    show application version
 ```

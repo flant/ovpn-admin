@@ -57,8 +57,8 @@ new Vue({
         filterable: true,
       },
       {
-        label: 'Connection Server',
-        field: 'ConnectionServer',
+        label: 'Active Connections',
+        field: 'Connections',
         filterable: true,
       },
       {
@@ -104,6 +104,38 @@ new Vue({
         label: 'Revoke',
         class: 'btn-warning',
         showWhenStatus: 'Active',
+        showForServerRole: ['master'],
+        showForModule: ["core"],
+      },
+      {
+        name: 'u-delete',
+        label: 'Delete',
+        class: 'btn-danger',
+        showWhenStatus: 'Revoked',
+        showForServerRole: ['master'],
+        showForModule: ["core"],
+      },
+      {
+        name: 'u-delete',
+        label: 'Delete',
+        class: 'btn-danger',
+        showWhenStatus: 'Expired',
+        showForServerRole: ['master'],
+        showForModule: ["core"],
+      },
+      {
+        name: 'u-rotate',
+        label: 'Rotate',
+        class: 'btn-warning',
+        showWhenStatus: 'Revoked',
+        showForServerRole: ['master'],
+        showForModule: ["core"],
+      },
+      {
+        name: 'u-rotate',
+        label: 'Rotate',
+        class: 'btn-warning',
+        showWhenStatus: 'Expired',
         showForServerRole: ['master'],
         showForModule: ["core"],
       },
@@ -161,10 +193,14 @@ new Vue({
       newPassword: '',
       passwordChangeStatus: '',
       passwordChangeMessage: '',
+      rotateUserMessage: '',
+      deleteUserMessage: '',
       modalNewUserVisible: false,
       modalShowConfigVisible: false,
       modalShowCcdVisible: false,
       modalChangePasswordVisible: false,
+      modalRotateUserVisible: false,
+      modalDeleteUserVisible: false,
       openvpnConfig: '',
       ccd: {
         Name: '',
@@ -203,6 +239,16 @@ new Vue({
         _this.getUserData();
         _this.$notify({title: 'User ' + _this.username + ' unrevoked!', type: 'success'})
       });
+    })
+    _this.$root.$on('u-rotate', function () {
+      _this.u.modalRotateUserVisible = true;
+      var data = new URLSearchParams();
+      data.append('username', _this.username);
+    })
+    _this.$root.$on('u-delete', function () {
+      _this.u.modalDeleteUserVisible = true;
+      var data = new URLSearchParams();
+      data.append('username', _this.username);
     })
     _this.$root.$on('u-show-config', function () {
       _this.u.modalShowConfigVisible = true;
@@ -251,14 +297,20 @@ new Vue({
     })
   },
   computed: {
-    customAddressDisabled: function () {
-      return this.serverRole == "master" ? this.u.ccd.ClientAddress == "dynamic" : true
+    customAddressDynamic: function () {
+      return this.u.ccd.ClientAddress == "dynamic"
     },
     ccdApplyStatusCssClass: function () {
         return this.u.ccdApplyStatus == 200 ? "alert-success" : "alert-danger"
     },
     passwordChangeStatusCssClass: function () {
       return this.u.passwordChangeStatus == 200 ? "alert-success" : "alert-danger"
+    },
+    userRotateStatusCssClass: function () {
+      return this.u.roatateUserStatus == 200 ? "alert-success" : "alert-danger"
+    },
+    deleteUserStatusCssClass: function () {
+      return this.u.deleteUserStatus == 200 ? "alert-success" : "alert-danger"
     },
     modalNewUserDisplay: function () {
       return this.u.modalNewUserVisible ? {display: 'flex'} : {}
@@ -271,6 +323,12 @@ new Vue({
     },
     modalChangePasswordDisplay: function () {
       return this.u.modalChangePasswordVisible ? {display: 'flex'} : {}
+    },
+    modalRotateUserDisplay: function () {
+      return this.u.modalRotateUserVisible ? {display: 'flex'} : {}
+    },
+    modalDeleteUserDisplay: function () {
+      return this.u.modalDeleteUserVisible ? {display: 'flex'} : {}
     },
     revokeFilterText: function() {
       return this.filters.hideRevoked ? "Show revoked" : "Hide revoked"
@@ -288,7 +346,16 @@ new Vue({
   },
   methods: {
     rowStyleClassFn: function(row) {
-      return row.ConnectionStatus == 'Connected' ? 'connected-user' : ''
+      if (row.ConnectionStatus == 'Connected') {
+        return 'connected-user'
+      }
+      if (row.AccountStatus == 'Revoked') {
+        return 'revoked-user'
+      }
+      if (row.AccountStatus == 'Expired') {
+        return 'expired-user'
+      }
+      return ''
     },
     rowActionFn: function(e) {
       this.username = e.target.dataset.username;
@@ -300,14 +367,6 @@ new Vue({
         .then(function(response) {
           _this.rows = Array.isArray(response.data) ? response.data : [];
         });
-    },
-
-    staticAddrCheckboxOnChange: function() {
-      var staticAddrInput = document.getElementById('static-address');
-      var staticAddrEnable = document.getElementById('enable-static');
-
-      staticAddrInput.disabled = !staticAddrEnable.checked;
-      staticAddrInput.value == "dynamic" ? staticAddrInput.value = "" : staticAddrInput.value = "dynamic";
     },
 
     getServerSetting: function() {
@@ -393,6 +452,52 @@ new Vue({
           _this.u.passwordChangeMessage = error.response.data.message;
           _this.$notify({title: 'Changing password for user ' + _this.username + ' failed!', type: 'error'})
         });
+    },
+
+    rotateUser: function(user) {
+      var _this = this;
+
+      _this.u.rotateUserMessage = "";
+
+      var data = new URLSearchParams();
+      data.append('username', user);
+      data.append('password', _this.u.newPassword);
+
+      axios.request(axios_cfg('api/user/rotate', data, 'form'))
+        .then(function(response) {
+          _this.u.roatateUserStatus = 200;
+          _this.u.newPassword = '';
+          _this.getUserData();
+          _this.u.modalRotateUserVisible = false;
+          _this.$notify({title: 'Certificates for user ' + _this.username + ' rotated!', type: 'success'})
+        })
+        .catch(function(error) {
+          _this.u.roatateUserStatus = error.response.status;
+          _this.u.rotateUserMessage = error.response.data.message;
+          _this.$notify({title: 'Rotate certificates for user ' + _this.username + ' failed!', type: 'error'})
+        })
+    },
+    deleteUser: function(user) {
+      var _this = this;
+
+      _this.u.deleteUserMessage = "";
+
+      var data = new URLSearchParams();
+      data.append('username', user);
+
+      axios.request(axios_cfg('api/user/delete', data, 'form'))
+        .then(function(response) {
+          _this.u.deleteUserStatus = 200;
+          _this.u.newPassword = '';
+          _this.getUserData();
+          _this.u.modalDeleteUserVisible = false;
+          _this.$notify({title: 'User ' + _this.username + ' deleted!', type: 'success'})
+        })
+        .catch(function(error) {
+          _this.u.deleteUserStatus = error.response.status;
+          _this.u.deleteUserMessage = error.response.data.message;
+          _this.$notify({title: 'Deleting user ' + _this.username + ' failed!', type: 'error'})
+        })
     },
   }
 

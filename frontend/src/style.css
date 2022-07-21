@@ -48,6 +48,14 @@ body {
   background-color: rgba(162, 245, 169, 0.5);
 }
 
+.revoked-user {
+  background-color: rgba(198, 186, 186, 0.5);
+}
+
+.expired-user {
+  background-color: rgba(255, 220, 127, 0.5);
+}
+
 .new-user-btn {
   margin-right: 2rem;
 }
