@@ -8,8 +8,8 @@ Originally created in [Flant](https://flant.com/) for internal needs & used for 
 
 ## Features
 
-* Adding OpenVPN users (generating certificates for them);
-* Revoking/restoring users certificates;
+* Adding, deleting OpenVPN users (generating certificates for them);
+* Revoking/restoring/rotating users certificates;
 * Generating ready-to-user config files;
 * Providing metrics for Prometheus, including certificates expiration date, number of (connected/total) users, information about connected users;
 * (optionally) Specifying CCD (`client-config-dir`) for each user;
@@ -28,15 +28,12 @@ An example of dashboard made using ovpn-admin metrics:
 
 ## Installation
 
-### Disclaimer
-
-This tool uses external calls for `bash`, `coreutils` and `easy-rsa`, thus **Linux systems only are supported** at the moment.
-
 ### 1. Docker
 
 There is a ready-to-use [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml), so you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh).
 
-Requirements. You need [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https://docs.docker.com/compose/install/) installed.
+Requirements:
+You need [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https://docs.docker.com/compose/install/) installed.
 
 Commands to execute:
 
@@ -45,6 +42,9 @@ git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
 ./start.sh
 ```
+#### 1.1
+Ready docker images available on [Docker Hub](https://hub.docker.com/r/flant/ovpn-admin/tags) 
+. Tags are simple: `$VERSION` or `latest` for ovpn-admin and `openvpn-$VERSION` or `openvpn-latest` for openvpn-server
 
 ### 2. Building from source
 
@@ -67,11 +67,17 @@ cd ovpn-admin
 
 ### 3. Prebuilt binary
 
-You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases) page — just choose a relevant tar.gz file.
+You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases/latest) page — just choose a relevant tar.gz file.
 
 
 ## Notes
-To use password authentication (the `--auth` flag) you have to install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases). This tool should be available in your `$PATH` and its binary should be executable (`+x`).
+* this tool uses external calls for `bash`, `coreutils` and `easy-rsa`, thus **Linux systems only are supported** at the moment.
+* to enable additional password authentication provide `--auth` and `--auth.db="/etc/easyrsa/pki/users.db`" flags and install [openvpn-user](https://github.com/pashcovich/openvpn-user/releases/latest). This tool should be available in your `$PATH` and its binary should be executable (`+x`).
+* master-replica synchronization does not work with `--storage.backend=kubernetes.secrets` - **WIP**
+* additional password authentication does not work with `--storage.backend=kubernetes.secrets` -  **WIP**
+* if you use `--ccd` and `--ccd.path="/etc/openvpn/ccd"` abd plan to use static address setup for users do not forget to provide `--ovpn.network="172.16.100.0/24"` with valid openvpn-server network 
+* tested only with Openvpn-server versions 2.4 and 2.
+* status of users connections update every 28 second(*no need to ask why =)*)
 
 ## Usage
 
@@ -85,7 +91,7 @@ Flags:
   (or OVPN_LISTEN_HOST)
 
   --listen.port="8080"         port for ovpn-admin
-  (or OVPN_LISTEN_PROT)
+  (or OVPN_LISTEN_PORT)
 
   --role="master"              server role, master or slave
   (or OVPN_ROLE)
@@ -149,12 +155,6 @@ Flags:
 
   --auth.db="./easyrsa/pki/users.db"
   (or OVPN_AUTH_DB_PATH)      database path for password authorization
-
-  --debug                      enable debug mode
-  (or OVPN_DEBUG)
-
-  --verbose                    enable verbose mode
-  (or OVPN_VERBOSE)
   
   --log.level                  set log level: trace, debug, info, warn, error (default info)
   (or LOG_LEVEL)

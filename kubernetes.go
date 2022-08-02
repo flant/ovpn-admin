@@ -7,9 +7,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -452,8 +454,8 @@ func (openVPNPKI *OpenVPNPKI) easyrsaRotate(commonName, newPassword string) (err
 	if err != nil {
 		log.Error(err)
 	}
-
-	secret.Annotations["commonName"] = "REVOKED" + commonName
+	uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
+	secret.Annotations["commonName"] = "REVOKED-" + commonName + "-" + uniqHash
 	secret.Labels["name"] = "REVOKED" + commonName
 	secret.Labels["revokedForever"] = "true"
 
@@ -490,9 +492,9 @@ func (openVPNPKI *OpenVPNPKI) easyrsaDelete(commonName string) (err error) {
 	if err != nil {
 		log.Error(err)
 	}
-
-	secret.Annotations["commonName"] = "DELETED" + commonName
-	secret.Labels["name"] = "DELETED" + commonName
+	uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
+	secret.Annotations["commonName"] = "REVOKED-" + commonName + "-" + uniqHash
+	secret.Labels["name"] = "REVOKED-" + commonName + "-" + uniqHash
 	secret.Labels["revokedForever"] = "true"
 
 	_, err = openVPNPKI.KubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
