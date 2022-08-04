@@ -3,7 +3,7 @@
 *.iml
 out
 gen
-
+.github
 
 easyrsa
 easyrsa_master
@@ -22,3 +22,5 @@ ovpn-admin
 docker-compose.yaml
 docker-compose-slave.yaml
 img
+dashboard
+.helm
