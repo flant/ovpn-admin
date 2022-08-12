@@ -141,6 +141,21 @@ func fCopy(src, dst string) error {
 	return err
 }
 
+func fMove(src, dst string) error {
+	err := fCopy(src, dst)
+	if err != nil {
+		log.Warn(err)
+		return err
+	}
+	err = fDelete(src)
+	if err != nil {
+		log.Warn(err)
+		return err
+	}
+
+	return nil
+}
+
 func fDownload(path, url string, basicAuth bool) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
