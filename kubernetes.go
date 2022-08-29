@@ -7,9 +7,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -22,7 +24,7 @@ import (
 const (
 	secretCA         = "openvpn-pki-ca"
 	secretServer     = "openvpn-pki-server"
-	secretClientTmpl = "openvpn-pki-%s"
+	secretClientTmpl = "openvpn-pki-%d"
 	secretCRL        = "openvpn-pki-crl"
 	secretIndexTxt   = "openvpn-pki-index-txt"
 	secretDHandTA    = "openvpn-pki-dh-and-ta"
@@ -228,11 +230,11 @@ func (openVPNPKI *OpenVPNPKI) indexTxtUpdate() (err error) {
 		log.Trace(cert.Subject.CommonName)
 
 		if secret.Annotations["revokedAt"] == "" {
-			indexTxt += fmt.Sprintf("%s\t%s\t\t%s\t%s\t%s\n", "V", cert.NotAfter.Format(indexTxtDateFormat), cert.SerialNumber.String(), "unknown", "/CN="+cert.Subject.CommonName)
+			indexTxt += fmt.Sprintf("%s\t%s\t\t%s\t%s\t%s\n", "V", cert.NotAfter.Format(indexTxtDateFormat), fmt.Sprintf("%d", cert.SerialNumber), "unknown", "/CN="+secret.Annotations["name"])
 		} else if cert.NotAfter.Before(time.Now()) {
-			indexTxt += fmt.Sprintf("%s\t%s\t\t%s\t%s\t%s\n", "E", cert.NotAfter.Format(indexTxtDateFormat), cert.SerialNumber.String(), "unknown", "/CN="+cert.Subject.CommonName)
+			indexTxt += fmt.Sprintf("%s\t%s\t\t%s\t%s\t%s\n", "E", cert.NotAfter.Format(indexTxtDateFormat), fmt.Sprintf("%d", cert.SerialNumber), "unknown", "/CN="+secret.Annotations["name"])
 		} else {
-			indexTxt += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", "R", cert.NotAfter.Format(indexTxtDateFormat), secret.Annotations["revokedAt"], cert.SerialNumber.String(), "unknown", "/CN="+cert.Subject.CommonName)
+			indexTxt += fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", "R", cert.NotAfter.Format(indexTxtDateFormat), secret.Annotations["revokedAt"], fmt.Sprintf("%d", cert.SerialNumber), "unknown", "/CN="+secret.Annotations["name"])
 		}
 
 	}
@@ -336,7 +338,7 @@ func (openVPNPKI *OpenVPNPKI) easyrsaBuildClient(commonName string) (err error) 
 			"notBefore":    clientCert.NotBefore.Format(indexTxtDateFormat),
 			"notAfter":     clientCert.NotAfter.Format(indexTxtDateFormat),
 			"revokedAt":    "",
-			"serialNumber": clientCert.SerialNumber.String(),
+			"serialNumber": fmt.Sprintf("%d", clientCert.SerialNumber),
 		},
 	}
 
@@ -444,6 +446,78 @@ func (openVPNPKI *OpenVPNPKI) easyrsaUnrevoke(commonName string) (err error) {
 
 	err = openVPNPKI.updateCRLOnDisk()
 
+	return
+}
+
+func (openVPNPKI *OpenVPNPKI) easyrsaRotate(commonName, newPassword string) (err error) {
+	secret, err := openVPNPKI.secretGetByLabels("name=" + commonName)
+	if err != nil {
+		log.Error(err)
+	}
+	uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
+	secret.Annotations["commonName"] = "REVOKED-" + commonName + "-" + uniqHash
+	secret.Labels["name"] = "REVOKED" + commonName
+	secret.Labels["revokedForever"] = "true"
+
+	_, err = openVPNPKI.KubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.easyrsaBuildClient(commonName)
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.indexTxtUpdate()
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.updateIndexTxtOnDisk()
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.easyrsaGenCRL()
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = openVPNPKI.updateCRLOnDisk()
+	return
+}
+func (openVPNPKI *OpenVPNPKI) easyrsaDelete(commonName string) (err error) {
+	secret, err := openVPNPKI.secretGetByLabels("name=" + commonName)
+	if err != nil {
+		log.Error(err)
+	}
+	uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
+	secret.Annotations["commonName"] = "REVOKED-" + commonName + "-" + uniqHash
+	secret.Labels["name"] = "REVOKED-" + commonName + "-" + uniqHash
+	secret.Labels["revokedForever"] = "true"
+
+	_, err = openVPNPKI.KubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.indexTxtUpdate()
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.updateIndexTxtOnDisk()
+	if err != nil {
+		return
+	}
+
+	err = openVPNPKI.easyrsaGenCRL()
+	if err != nil {
+		log.Error(err)
+	}
+
+	err = openVPNPKI.updateCRLOnDisk()
 	return
 }
 

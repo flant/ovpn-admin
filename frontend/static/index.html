@@ -42,10 +42,6 @@
     </template>
   </vue-good-table>
 
-<!--  <div class="d-flex justify-content-md-end">-->
-<!--    <button type="button" class="btn btn-sm btn-success el-square new-user-btn" v-on:click.stop="u.ctxVisible=false;u.modalNewUserVisible=true">Add user</button>-->
-<!--  </div>-->
-
   <div class="modal-wrapper" v-if="u.modalNewUserVisible" v-bind:style="modalNewUserDisplay">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -123,12 +119,10 @@
         <div class="modal-body">
           <div class="input-group">
             <h5 class="static-address-label ">Static address:</h5>
-            <div class="input-group-prepend">
-              <div class="input-group-text">
-                <input id="enable-static" type="checkbox" @change="staticAddrCheckboxOnChange()" v-if="serverRole == 'master'" v-bind:checked="!customAddressDisabled">
-              </div>
+            <input id="static-address" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1">
+            <div class="input-group-append">
+              <button id="static-address-clear" class="btn btn-warning" type="button" v-on:click="u.ccd.ClientAddress = 'dynamic'" v-if="serverRole == 'master'" v-bind:disabled="customAddressDynamic">Clear</button>
             </div>
-            <input id="static-address" type="text" class="form-control" v-model="u.ccd.ClientAddress" placeholder="127.0.0.1" v-bind:disabled="customAddressDisabled">
           </div>
         </div>
         <div class="modal-body">
@@ -186,6 +180,50 @@
         <div class="modal-footer">
             <button type="button" class="btn btn-success el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="ccdApply()">Save</button>
             <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.ccd={Name:'',ClientAddress:'',CustomRoutes:[]};u.ccdApplyStatusMessage='';u.ccdApplyStatus='';u.modalShowCcdVisible=false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-wrapper" v-if="u.modalRotateUserVisible" v-bind:style="modalRotateUserDisplay">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>Confirm rotating certificates for user: <strong>{{ username }}</strong></h4>
+        </div>
+        <div class="modal-body" v-if="modulesEnabled.includes('passwdAuth')">
+          <h4>Enter new password:</h4>
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newPassword">
+        </div>
+
+        <div class="modal-footer justify-content-center" v-if="u.rotateUserMessage.length > 0">
+          <div class="alert" v-bind:class="userRotateStatusCssClass" role="alert" >
+            {{ u.rotateUserMessage }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger el-square modal-el-margin" v-on:click.stop="rotateUser(username)">Rotate</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.rotateUserMessage='';u.modalRotateUserVisible=false">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-wrapper" v-if="u.modalDeleteUserVisible" v-bind:style="modalDeleteUserDisplay">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h4>Confirm deleting user: <strong>{{ username }}</strong></h4>
+        </div>
+
+        <div class="modal-footer justify-content-center" v-if="u.deleteUserMessage.length > 0">
+          <div class="alert" v-bind:class="deleteUserStatusCssClass" role="alert" >
+            {{ u.deleteUserMessage }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger el-square modal-el-margin" v-on:click.stop="deleteUser(username)">Delete</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.deleteUserMessage='';u.modalDeleteUserVisible=false">Close</button>
         </div>
       </div>
     </div>
