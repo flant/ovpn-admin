@@ -192,6 +192,7 @@ new Vue({
       newUserPrivateKeyPassword: '',
       newUserCreateError: '',
       newPassword: '',
+      newPrivateKeyPassword: '',
       passwordChangeStatus: '',
       passwordChangeMessage: '',
       rotateUserMessage: '',
@@ -465,18 +466,20 @@ new Vue({
       var data = new URLSearchParams();
       data.append('username', user);
       data.append('password', _this.u.newPassword);
+      data.append('private-key-password', _this.u.newPrivateKeyPassword);
 
       axios.request(axios_cfg('api/user/rotate', data, 'form'))
         .then(function(response) {
           _this.u.roatateUserStatus = 200;
           _this.u.newPassword = '';
+          _this.u.newPrivateKeyPassword = '';
           _this.getUserData();
           _this.u.modalRotateUserVisible = false;
           _this.$notify({title: 'Certificates for user ' + _this.username + ' rotated!', type: 'success'})
         })
         .catch(function(error) {
           _this.u.roatateUserStatus = error.response.status;
-          _this.u.rotateUserMessage = error.response.data.message;
+          _this.u.rotateUserMessage = error.response.data;
           _this.$notify({title: 'Rotate certificates for user ' + _this.username + ' failed!', type: 'error'})
         })
     },

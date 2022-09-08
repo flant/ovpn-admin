@@ -286,7 +286,8 @@ func (oAdmin *OvpnAdmin) userRotateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	_ = r.ParseForm()
-	err, msg := oAdmin.userRotate(r.FormValue("username"), r.FormValue("password"))
+	err, msg := oAdmin.userRotate(
+		r.FormValue("username"), r.FormValue("password"), r.FormValue("private-key-password"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
@@ -1152,7 +1153,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 	return errors.New(fmt.Sprintf("user \"%s\" not found", username)), fmt.Sprintf("{\"msg\":\"User \"%s\" not found\"}", username)
 }
 
-func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string) {
+func (oAdmin *OvpnAdmin) userRotate(username string, newPassword string, newPrivateKeyPassword string) (error, string) {
 	if checkUserExist(username) {
 		if *storageBackend == "kubernetes.secrets" {
 			err := app.easyrsaRotate(username, newPassword)
@@ -1185,8 +1186,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				log.Debug(o)
 			}
 
-			// TODO: FIX
-			userCreated, userCreateMessage := oAdmin.userCreate(username, newPassword, "")
+			userCreated, userCreateMessage := oAdmin.userCreate(username, newPassword, newPrivateKeyPassword)
 			if !userCreated {
 				usersFromIndexTxt = indexTxtParser(fRead(*indexTxtPath))
 				for i := range usersFromIndexTxt {
@@ -1199,7 +1199,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				if err != nil {
 					log.Error(err)
 				}
-				return errors.New(fmt.Sprintf("error rotaing user due:  %s", userCreateMessage)), userCreateMessage
+				return errors.New(fmt.Sprintf("Error rotating user:  %s", userCreateMessage)), userCreateMessage
 			}
 
 			usersFromIndexTxt = indexTxtParser(fRead(*indexTxtPath))

@@ -196,6 +196,10 @@
           <h4>Enter new password:</h4>
           <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newPassword">
         </div>
+        <div class="modal-body" v-if="modulesEnabled.includes('privateKeyPasswdAuth')">
+          <h4>Enter new private key password:</h4>
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Private key password [_a-zA-Z0-9\.-]" v-model="u.newPrivateKeyPassword">
+        </div>
 
         <div class="modal-footer justify-content-center" v-if="u.rotateUserMessage.length > 0">
           <div class="alert" v-bind:class="userRotateStatusCssClass" role="alert" >
