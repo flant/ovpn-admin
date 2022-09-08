@@ -69,6 +69,7 @@ var (
 	ccdTemplatePath          = kingpin.Flag("templates.ccd-path", "path to custom ccd.tpl").Default("").Envar("OVPN_TEMPLATES_CCD_PATH").String()
 	authByPassword           = kingpin.Flag("auth.password", "enable additional password authentication").Default("false").Envar("OVPN_AUTH").Bool()
 	authDatabase             = kingpin.Flag("auth.db", "database path for password authentication").Default("./easyrsa/pki/users.db").Envar("OVPN_AUTH_DB_PATH").String()
+	authPrivateKeyPassword   = kingpin.Flag("auth.private-key-password", "password for private key authentication").Default("false").Envar("OVPN_AUTH_PRIVATE_KEY_PASSWORD").Bool()
 	logLevel                 = kingpin.Flag("log.level", "set log level: trace, debug, info, warn, error (default info)").Default("info").Envar("LOG_LEVEL").String()
 	logFormat                = kingpin.Flag("log.format", "set log format: text, json (default text)").Default("text").Envar("LOG_FORMAT").String()
 	storageBackend           = kingpin.Flag("storage.backend", "storage backend: filesystem, kubernetes.secrets (default filesystem)").Default("filesystem").Envar("STORAGE_BACKEND").String()
@@ -266,7 +267,8 @@ func (oAdmin *OvpnAdmin) userCreateHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	_ = r.ParseForm()
-	userCreated, userCreateStatus := oAdmin.userCreate(r.FormValue("username"), r.FormValue("password"))
+	userCreated, userCreateStatus := oAdmin.userCreate(
+		r.FormValue("username"), r.FormValue("password"), r.FormValue("private-key-password"))
 
 	if userCreated {
 		oAdmin.clients = oAdmin.usersList()
@@ -529,6 +531,14 @@ func main() {
 			ovpnAdmin.modules = append(ovpnAdmin.modules, "passwdAuth")
 		} else {
 			log.Fatal("Right now the keys `--storage.backend=kubernetes.secret` and `--auth.password` are not working together. Please use only one of them ")
+		}
+	}
+
+	if *authPrivateKeyPassword {
+		if *storageBackend != "kubernetes.secrets" {
+			ovpnAdmin.modules = append(ovpnAdmin.modules, "privateKeyPasswdAuth")
+		} else {
+			log.Fatal("Right now the keys `--storage.backend=kubernetes.secret` and `--auth.private-key-password` are not working together. Please use only one of them ")
 		}
 	}
 
@@ -860,9 +870,9 @@ func validateUsername(username string) error {
 	}
 }
 
-func validatePassword(password string) error {
+func validatePassword(password string, passwordName string) error {
 	if utf8.RuneCountInString(password) < passwordMinLength {
-		return errors.New(fmt.Sprintf("Password too short, password length must be greater or equal %d", passwordMinLength))
+		return errors.New(fmt.Sprintf("%s too short, password length must be greater or equal %d", passwordName, passwordMinLength))
 	} else {
 		return nil
 	}
@@ -944,7 +954,7 @@ func (oAdmin *OvpnAdmin) usersList() []OpenvpnClient {
 	return users
 }
 
-func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
+func (oAdmin *OvpnAdmin) userCreate(username string, password string, privateKeyPassword string) (bool, string) {
 	ucErr := fmt.Sprintf("User \"%s\" created", username)
 
 	oAdmin.createUserMutex.Lock()
@@ -962,8 +972,15 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 	}
 
 	if *authByPassword {
-		if err := validatePassword(password); err != nil {
+		if err := validatePassword(password, "Password"); err != nil {
 			log.Debugf("userCreate: authByPassword(): %s", err.Error())
+			return false, err.Error()
+		}
+	}
+
+	if *authPrivateKeyPassword {
+		if err := validatePassword(privateKeyPassword, "Private key password"); err != nil {
+			log.Debugf("userCreate: authPrivateKeyPassword(): %s", err.Error())
 			return false, err.Error()
 		}
 	}
@@ -974,7 +991,15 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 			log.Error(err)
 		}
 	} else {
-		o := runBash(fmt.Sprintf("cd %s && easyrsa build-client-full %s nopass 1>/dev/null", *easyrsaDirPath, username))
+		var easyRsaCommand string
+
+		if *authPrivateKeyPassword {
+			easyRsaCommand = fmt.Sprintf("--passout=pass:%s build-client-full %s", privateKeyPassword, username)
+		} else {
+			easyRsaCommand = fmt.Sprintf("build-client-full %s nopass", username)
+		}
+
+		o := runBash(fmt.Sprintf("cd %s && easyrsa %s 1>/dev/null", *easyrsaDirPath, easyRsaCommand))
 		log.Debug(o)
 	}
 
@@ -996,7 +1021,7 @@ func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (error, s
 		o := runBash(fmt.Sprintf("openvpn-user check --db.path %s --user %s | grep %s | wc -l", *authDatabase, username, username))
 		log.Debug(o)
 
-		if err := validatePassword(password); err != nil {
+		if err := validatePassword(password, "Password"); err != nil {
 			log.Warningf("userChangePassword: %s", err.Error())
 			return err, err.Error()
 		}
@@ -1160,7 +1185,8 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				log.Debug(o)
 			}
 
-			userCreated, userCreateMessage := oAdmin.userCreate(username, newPassword)
+			// TODO: FIX
+			userCreated, userCreateMessage := oAdmin.userCreate(username, newPassword, "")
 			if !userCreated {
 				usersFromIndexTxt = indexTxtParser(fRead(*indexTxtPath))
 				for i := range usersFromIndexTxt {

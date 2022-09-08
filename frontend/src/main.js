@@ -189,6 +189,7 @@ new Vue({
     u: {
       newUserName: '',
       newUserPassword: '',
+      newUserPrivateKeyPassword: '',
       newUserCreateError: '',
       newPassword: '',
       passwordChangeStatus: '',
@@ -393,6 +394,7 @@ new Vue({
       var data = new URLSearchParams();
       data.append('username', _this.u.newUserName);
       data.append('password', _this.u.newUserPassword);
+      data.append('private-key-password', _this.u.newUserPrivateKeyPassword);
 
       _this.username = _this.u.newUserName;
 
@@ -402,6 +404,7 @@ new Vue({
         _this.u.modalNewUserVisible = false;
         _this.u.newUserName = '';
         _this.u.newUserPassword = '';
+        _this.u.newUserPrivateKeyPassword = '';
         _this.getUserData();
       })
       .catch(function(error) {
