@@ -76,7 +76,8 @@ You can also download and use prebuilt binaries from the [releases](https://gith
 * master-replica synchronization does not work with `--storage.backend=kubernetes.secrets` - **WIP**
 * additional password authentication does not work with `--storage.backend=kubernetes.secrets` -  **WIP**
 * if you use `--ccd` and `--ccd.path="/etc/openvpn/ccd"` abd plan to use static address setup for users do not forget to provide `--ovpn.network="172.16.100.0/24"` with valid openvpn-server network 
-* tested only with Openvpn-server versions 2.4 and 2.
+* tested only with Openvpn-server versions 2.4 and 2.5 with only tls-auth mode
+* not tested with EasyRsa version > 3.0.8
 * status of users connections update every 28 second(*no need to ask why =)*)
 
 ## Usage
