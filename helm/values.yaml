@@ -4,9 +4,6 @@
 
 replicaCount: 1
 
-global:
-  domain: changeme
-
 openvpnAdmin:
   image:
     repository: changeme
