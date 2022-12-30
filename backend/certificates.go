@@ -1,4 +1,4 @@
-package main
+package backend
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// decode certificate from PEM to x509
-func decodeCert(certPEMBytes []byte) (cert *x509.Certificate, err error) {
+// DecodeCert decode certificate from PEM to x509
+func DecodeCert(certPEMBytes []byte) (cert *x509.Certificate, err error) {
 	certPem, _ := pem.Decode(certPEMBytes)
 	certPemBytes := certPem.Bytes
 
@@ -25,8 +25,8 @@ func decodeCert(certPEMBytes []byte) (cert *x509.Certificate, err error) {
 	return
 }
 
-// decode private key from PEM to RSA format
-func decodePrivKey(privKey []byte) (key *rsa.PrivateKey, err error) {
+// DecodePrivKey decode private key from PEM to RSA format
+func DecodePrivKey(privKey []byte) (key *rsa.PrivateKey, err error) {
 	privKeyPem, _ := pem.Decode(privKey)
 	key, err = x509.ParsePKCS1PrivateKey(privKeyPem.Bytes)
 	if err == nil {
@@ -43,8 +43,8 @@ func decodePrivKey(privKey []byte) (key *rsa.PrivateKey, err error) {
 	return
 }
 
-// return PEM encoded private key
-func genPrivKey() (privKeyPEM *bytes.Buffer, err error) {
+// GenPrivKey return PEM encoded private key
+func GenPrivKey() (privKeyPEM *bytes.Buffer, err error) {
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
 
 	//privKeyPKCS1 := x509.MarshalPKCS1PrivateKey(privKey)
@@ -60,12 +60,11 @@ func genPrivKey() (privKeyPEM *bytes.Buffer, err error) {
 		Bytes: privKeyPKCS8,
 	})
 
-
 	return
 }
 
-// return PEM encoded certificate
-func genCA(privKey *rsa.PrivateKey) (issuerPEM *bytes.Buffer, err error) {
+// GenCA return PEM encoded certificate
+func GenCA(privKey *rsa.PrivateKey) (issuerPEM *bytes.Buffer, err error) {
 	serialNumberRange := new(big.Int).Lsh(big.NewInt(1), 128)
 
 	issuerSerial, err := rand.Int(rand.Reader, serialNumberRange)
@@ -96,8 +95,8 @@ func genCA(privKey *rsa.PrivateKey) (issuerPEM *bytes.Buffer, err error) {
 	return
 }
 
-// return PEM encoded certificate
-func genServerCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn string) (issuerPEM *bytes.Buffer, err error) {
+// GenServerCert return PEM encoded certificate
+func GenServerCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn string) (issuerPEM *bytes.Buffer, err error) {
 	serialNumberRange := new(big.Int).Lsh(big.NewInt(1), 128)
 	serial, err := rand.Int(rand.Reader, serialNumberRange)
 
@@ -128,8 +127,8 @@ func genServerCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn 
 	return
 }
 
-// return PEM encoded certificate
-func genClientCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn string) (issuerPEM *bytes.Buffer, err error) {
+// GenClientCert return PEM encoded certificate
+func GenClientCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn string) (issuerPEM *bytes.Buffer, err error) {
 	serialNumberRange := new(big.Int).Lsh(big.NewInt(1), 128)
 	serial, err := rand.Int(rand.Reader, serialNumberRange)
 
@@ -160,8 +159,8 @@ func genClientCert(privKey, caPrivKey *rsa.PrivateKey, ca *x509.Certificate, cn 
 	return
 }
 
-// return PEM encoded CRL
-func genCRL(certs []*RevokedCert, ca *x509.Certificate, caKey *rsa.PrivateKey) (crlPEM *bytes.Buffer, err error) {
+// GenCRL return PEM encoded CRL
+func GenCRL(certs []*RevokedCert, ca *x509.Certificate, caKey *rsa.PrivateKey) (crlPEM *bytes.Buffer, err error) {
 	var revokedCertificates []pkix.RevokedCertificate
 
 	for _, cert := range certs {

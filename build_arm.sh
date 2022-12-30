@@ -4,8 +4,6 @@ PATH=$PATH:~/go/bin
 
 cd frontend && npm install && npm run build && cd ..
 
-packr2
-
 if [[ "$GOOS" == "linux" ]]; then
   if [[ "$GOARCH" == "arm" ]]; then
     CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm go build -a -tags netgo -ldflags "-linkmode external -extldflags -static -s -w" $@
@@ -14,5 +12,3 @@ if [[ "$GOOS" == "linux" ]]; then
     CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -a -tags netgo -ldflags "-linkmode external -extldflags -static -s -w" $@
   fi
 fi
-
-packr2 clean
