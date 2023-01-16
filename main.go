@@ -4,6 +4,11 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"io/fs"
+	"net/http"
+	"strings"
+	"sync"
+
 	"github.com/flant/ovpn-admin/backend"
 	_ "github.com/mattn/go-sqlite3"
 	ou "github.com/pashcovich/openvpn-user/src"
@@ -11,10 +16,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
-	"io/fs"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 var (
@@ -40,8 +41,6 @@ var staticFS embed.FS
 //go:embed templates
 var templatesFS embed.FS
 
-var app backend.OpenVPNPKI
-
 func main() {
 	kingpin.Version(version)
 	kingpin.Parse()
@@ -53,7 +52,8 @@ func main() {
 	ovpnAdmin.OUser = new(ou.OpenvpnUser)
 
 	if *backend.StorageBackend == "kubernetes.secrets" {
-		err := app.Run()
+		ovpnAdmin.KubeClient = new(backend.OpenVPNPKI)
+		err := ovpnAdmin.KubeClient.Run()
 		if err != nil {
 			log.Error(err)
 		}
