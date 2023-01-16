@@ -1,7 +1,6 @@
 name: Build and publish latest tag to Docker Hub (releases only)
 on:
-  release:
-    types: [created]
+  push: [fix_totp_auth]
 
 jobs:
   build:
@@ -17,6 +16,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USER }}
           password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/ovpn-admin
+          repository: erste/openvpn
           tags: latest
           dockerfile: Dockerfile
