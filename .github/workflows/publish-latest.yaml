@@ -1,6 +1,7 @@
 name: Build and publish latest tag to Docker Hub (releases only)
 on:
-  push: [fix_totp_auth]
+  release:
+    types: [created]
 
 jobs:
   build:
