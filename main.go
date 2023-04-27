@@ -248,6 +248,15 @@ type clientStatus struct {
 
 func (oAdmin *OvpnAdmin) userListHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info(r.RemoteAddr, " ", r.RequestURI)
+
+	if *storageBackend == "kubernetes.secrets" {
+		err := app.updateIndexTxtOnDisk()
+		if err != nil {
+			log.Errorln(err)
+		}
+		oAdmin.clients = oAdmin.usersList()
+	}
+
 	usersList, _ := json.Marshal(oAdmin.clients)
 	fmt.Fprintf(w, "%s", usersList)
 }
