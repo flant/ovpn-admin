@@ -37,10 +37,17 @@ You need [Docker](https://docs.docker.com/get-docker/) and [docker-compose](http
 
 Commands to execute:
 
+* bash
 ```bash
 git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
 ./start.sh
+```
+* powershell
+```bash
+git clone https://github.com/flant/ovpn-admin.git
+cd ovpn-admin
+./start.ps1
 ```
 #### 1.1
 Ready docker images available on [Docker Hub](https://hub.docker.com/r/flant/ovpn-admin/tags) 
