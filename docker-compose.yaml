@@ -36,6 +36,8 @@ services:
       OVPN_AUTH: "true"
       OVPN_AUTH_DB_PATH: "/mnt/easyrsa/pki/users.db"
       LOG_LEVEL: "debug"
+      BASIC_USERNAME: "admin"
+      BASIC_PASSWORD: "admin"
     network_mode: service:openvpn
     volumes:
       - ./easyrsa_master:/mnt/easyrsa
