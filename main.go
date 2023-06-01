@@ -9,11 +9,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"net"
 	"net/http"
 	"os"
@@ -24,6 +20,11 @@ import (
 	"text/template"
 	"time"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/gobuffalo/packr/v2"
 	"github.com/prometheus/client_golang/prometheus"
@@ -72,9 +73,11 @@ var (
 	logLevel                 = kingpin.Flag("log.level", "set log level: trace, debug, info, warn, error (default info)").Default("info").Envar("LOG_LEVEL").String()
 	logFormat                = kingpin.Flag("log.format", "set log format: text, json (default text)").Default("text").Envar("LOG_FORMAT").String()
 	storageBackend           = kingpin.Flag("storage.backend", "storage backend: filesystem, kubernetes.secrets (default filesystem)").Default("filesystem").Envar("STORAGE_BACKEND").String()
+	certsArchivePath         = "/tmp/" + certsArchiveFileName
+	ccdArchivePath           = "/tmp/" + ccdArchiveFileName
 
-	certsArchivePath = "/tmp/" + certsArchiveFileName
-	ccdArchivePath   = "/tmp/" + ccdArchiveFileName
+	basicAuthUser = kingpin.Flag("basic.username", "Username for BasicAuth").Default("").Envar("BASIC_USERNAME").String()
+	basicAuthPass = kingpin.Flag("basic.password", "Password for BasicAuth").Default("").Envar("BASIC_PASSWORD").String()
 
 	version = "2.0.0"
 )
@@ -482,6 +485,30 @@ func (oAdmin *OvpnAdmin) downloadCcdHandler(w http.ResponseWriter, r *http.Reque
 	http.ServeFile(w, r, ccdArchivePath)
 }
 
+func basicAuthHandler(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if checkBasicAuth(r) {
+			next(w, r)
+			return
+		}
+		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+		w.WriteHeader(401)
+		w.Write([]byte("401 Unauthorized\n"))
+	}
+}
+
+func checkBasicAuth(r *http.Request) bool {
+	// if basic auth user and password not set return true
+	if *basicAuthUser == "" && *basicAuthPass == "" {
+		return true
+	}
+	u, p, ok := r.BasicAuth()
+	if !ok {
+		return false
+	}
+	return u == *basicAuthUser && p == *basicAuthPass
+}
+
 var app OpenVPNPKI
 
 func main() {
@@ -555,25 +582,25 @@ func main() {
 	staticBox := packr.New("static", "./frontend/static")
 	static := CacheControlWrapper(http.FileServer(staticBox))
 
-	http.Handle("/", static)
-	http.HandleFunc("/api/server/settings", ovpnAdmin.serverSettingsHandler)
-	http.HandleFunc("/api/users/list", ovpnAdmin.userListHandler)
-	http.HandleFunc("/api/user/create", ovpnAdmin.userCreateHandler)
-	http.HandleFunc("/api/user/change-password", ovpnAdmin.userChangePasswordHandler)
-	http.HandleFunc("/api/user/rotate", ovpnAdmin.userRotateHandler)
-	http.HandleFunc("/api/user/delete", ovpnAdmin.userDeleteHandler)
-	http.HandleFunc("/api/user/revoke", ovpnAdmin.userRevokeHandler)
-	http.HandleFunc("/api/user/unrevoke", ovpnAdmin.userUnrevokeHandler)
-	http.HandleFunc("/api/user/config/show", ovpnAdmin.userShowConfigHandler)
-	http.HandleFunc("/api/user/disconnect", ovpnAdmin.userDisconnectHandler)
-	http.HandleFunc("/api/user/statistic", ovpnAdmin.userStatisticHandler)
-	http.HandleFunc("/api/user/ccd", ovpnAdmin.userShowCcdHandler)
-	http.HandleFunc("/api/user/ccd/apply", ovpnAdmin.userApplyCcdHandler)
+	http.Handle("/", basicAuthHandler(static.ServeHTTP))
+	http.HandleFunc("/api/server/settings", basicAuthHandler(ovpnAdmin.serverSettingsHandler))
+	http.HandleFunc("/api/users/list", basicAuthHandler(ovpnAdmin.userListHandler))
+	http.HandleFunc("/api/user/create", basicAuthHandler(ovpnAdmin.userCreateHandler))
+	http.HandleFunc("/api/user/change-password", basicAuthHandler(ovpnAdmin.userChangePasswordHandler))
+	http.HandleFunc("/api/user/rotate", basicAuthHandler(ovpnAdmin.userRotateHandler))
+	http.HandleFunc("/api/user/delete", basicAuthHandler(ovpnAdmin.userDeleteHandler))
+	http.HandleFunc("/api/user/revoke", basicAuthHandler(ovpnAdmin.userRevokeHandler))
+	http.HandleFunc("/api/user/unrevoke", basicAuthHandler(ovpnAdmin.userUnrevokeHandler))
+	http.HandleFunc("/api/user/config/show", basicAuthHandler(ovpnAdmin.userShowConfigHandler))
+	http.HandleFunc("/api/user/disconnect", basicAuthHandler(ovpnAdmin.userDisconnectHandler))
+	http.HandleFunc("/api/user/statistic", basicAuthHandler(ovpnAdmin.userStatisticHandler))
+	http.HandleFunc("/api/user/ccd", basicAuthHandler(ovpnAdmin.userShowCcdHandler))
+	http.HandleFunc("/api/user/ccd/apply", basicAuthHandler(ovpnAdmin.userApplyCcdHandler))
 
-	http.HandleFunc("/api/sync/last/try", ovpnAdmin.lastSyncTimeHandler)
-	http.HandleFunc("/api/sync/last/successful", ovpnAdmin.lastSuccessfulSyncTimeHandler)
-	http.HandleFunc(downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
-	http.HandleFunc(downloadCcdApiUrl, ovpnAdmin.downloadCcdHandler)
+	http.HandleFunc("/api/sync/last/try", basicAuthHandler(ovpnAdmin.lastSyncTimeHandler))
+	http.HandleFunc("/api/sync/last/successful", basicAuthHandler(ovpnAdmin.lastSuccessfulSyncTimeHandler))
+	http.HandleFunc(downloadCertsApiUrl, basicAuthHandler(ovpnAdmin.downloadCertsHandler))
+	http.HandleFunc(downloadCcdApiUrl, basicAuthHandler(ovpnAdmin.downloadCcdHandler))
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(ovpnAdmin.promRegistry, promhttp.HandlerOpts{}))
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
