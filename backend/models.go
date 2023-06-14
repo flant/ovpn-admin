@@ -1,10 +1,11 @@
 package backend
 
 import (
-	"github.com/pashcovich/openvpn-user/src"
-	"github.com/prometheus/client_golang/prometheus"
 	"io/fs"
 	"sync"
+
+	"github.com/pashcovich/openvpn-user/src"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type OvpnAdmin struct {
@@ -17,6 +18,7 @@ type OvpnAdmin struct {
 	activeClients          []ClientStatus
 	PromRegistry           *prometheus.Registry
 	OUser                  *src.OpenvpnUser
+	KubeClient             *OpenVPNPKI
 	MgmtInterfaces         map[string]string
 	Templates              fs.FS
 	Modules                []string

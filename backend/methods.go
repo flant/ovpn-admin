@@ -6,9 +6,6 @@ import (
 	"encoding/base32"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	ou "github.com/pashcovich/openvpn-user/src"
-	log "github.com/sirupsen/logrus"
 	"io/fs"
 	"net"
 	"regexp"
@@ -16,9 +13,11 @@ import (
 	"strings"
 	"text/template"
 	"time"
-)
 
-var app OpenVPNPKI
+	"github.com/google/uuid"
+	ou "github.com/pashcovich/openvpn-user/src"
+	log "github.com/sirupsen/logrus"
+)
 
 func (oAdmin *OvpnAdmin) RegisterMetrics() {
 	oAdmin.PromRegistry.MustRegister(OvpnServerCertExpire)
@@ -147,7 +146,7 @@ func (oAdmin *OvpnAdmin) renderClientConfig(username string) string {
 		conf.TLS = fRead(*EasyrsaDirPath + "/pki/ta.key")
 
 		if *StorageBackend == "kubernetes.secrets" {
-			conf.Cert, conf.Key = app.EasyrsaGetClientCert(username)
+			conf.Cert, conf.Key = oAdmin.KubeClient.EasyrsaGetClientCert(username)
 		} else {
 			conf.Cert = fRead(*EasyrsaDirPath + "/pki/issued/" + username + ".crt")
 			conf.Key = fRead(*EasyrsaDirPath + "/pki/private/" + username + ".key")
@@ -208,7 +207,7 @@ func (oAdmin *OvpnAdmin) parseCcd(username string) CCD {
 
 	var txtLinesArray []string
 	if *StorageBackend == "kubernetes.secrets" {
-		txtLinesArray = strings.Split(app.SecretGetCcd(ccd.User), "\n")
+		txtLinesArray = strings.Split(oAdmin.KubeClient.SecretGetCcd(ccd.User), "\n")
 	} else {
 		if fExist(*CcdDir + "/" + username) {
 			txtLinesArray = strings.Split(fRead(*CcdDir+"/"+username), "\n")
@@ -244,7 +243,7 @@ func (oAdmin *OvpnAdmin) modifyCcd(ccd CCD) (bool, string) {
 			log.Error(err)
 		}
 		if *StorageBackend == "kubernetes.secrets" {
-			app.SecretUpdateCcd(ccd.User, tmp.Bytes())
+			oAdmin.KubeClient.SecretUpdateCcd(ccd.User, tmp.Bytes())
 		} else {
 			err = fWrite(*CcdDir+"/"+ccd.User, tmp.String())
 			if err != nil {
@@ -363,13 +362,13 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 	}
 
 	if *StorageBackend == "kubernetes.secrets" {
-		err := app.EasyrsaBuildClient(username)
+		err := oAdmin.KubeClient.EasyrsaBuildClient(username)
 		if err != nil {
 			log.Error(err)
 			return err.Error(), err
 		}
 		if *AuthByPassword {
-			err = app.updatePasswordSecret(username, []byte(password))
+			err = oAdmin.KubeClient.updatePasswordSecret(username, []byte(password))
 			if err != nil {
 				return err.Error(), err
 			}
@@ -408,7 +407,7 @@ func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (error, s
 		}
 
 		if *StorageBackend == "kubernetes.secrets" {
-			err := app.updatePasswordSecret(username, []byte(password))
+			err := oAdmin.KubeClient.updatePasswordSecret(username, []byte(password))
 			if err != nil {
 				return err, err.Error()
 			}
@@ -430,7 +429,7 @@ func (oAdmin *OvpnAdmin) isSecondFactorConfigured(username string) bool {
 
 	switch *StorageBackend {
 	case "kubernetes.secrets":
-		sfe, err := app.SecondFactorEnabled(username)
+		sfe, err := oAdmin.KubeClient.SecondFactorEnabled(username)
 		if err != nil {
 			return false
 		}
@@ -453,7 +452,7 @@ func (oAdmin *OvpnAdmin) getUserSecret(username string) (string, error) {
 		var err error
 
 		if *StorageBackend == "kubernetes.secrets" {
-			userSecret, err = app.secondFactorSecret(username)
+			userSecret, err = oAdmin.KubeClient.secondFactorSecret(username)
 			if err != nil {
 				return err.Error(), err
 			}
@@ -482,7 +481,7 @@ func (oAdmin *OvpnAdmin) getUserSecret(username string) (string, error) {
 				newSecret := make([]byte, base32.StdEncoding.EncodedLen(len(rndStr)))
 
 				base32.StdEncoding.Encode(newSecret, []byte(rndStr))
-				updUserSecretErr := app.updateSecondFactorSecret(username, newSecret)
+				updUserSecretErr := oAdmin.KubeClient.updateSecondFactorSecret(username, newSecret)
 				if updUserSecretErr != nil {
 					return "", updUserSecretErr
 				}
@@ -512,13 +511,13 @@ func (oAdmin *OvpnAdmin) getUserSecret(username string) (string, error) {
 func (oAdmin *OvpnAdmin) registerUserAuthApp(username, totp string) error {
 	if checkUserExist(username) {
 		if *StorageBackend == "kubernetes.secrets" {
-			authOK, authErr := app.authByTOTP(username, totp)
+			authOK, authErr := oAdmin.KubeClient.authByTOTP(username, totp)
 			if authErr != nil {
 				return authErr
 			}
 
 			if authOK {
-				err := app.addSecondFactorEnabledLabel(username)
+				err := oAdmin.KubeClient.addSecondFactorEnabledLabel(username)
 				if err != nil {
 					return err
 				}
@@ -554,7 +553,7 @@ func (oAdmin *OvpnAdmin) resetUserAuthApp(username string) error {
 	if checkUserExist(username) {
 		if *StorageBackend == "kubernetes.secrets" {
 
-			err := app.deleteSecondFactorEnabledLabel(username)
+			err := oAdmin.KubeClient.deleteSecondFactorEnabledLabel(username)
 			if err != nil {
 				return err
 			}
@@ -583,7 +582,7 @@ func (oAdmin *OvpnAdmin) checkAuth(username, token string) error {
 		var auth bool
 		var authErr error
 		if *StorageBackend == "kubernetes.secrets" {
-			auth, authErr = app.authByTOTP(username, token)
+			auth, authErr = oAdmin.KubeClient.authByTOTP(username, token)
 			if authErr != nil {
 				return authErr
 			}
@@ -617,7 +616,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 	if checkUserExist(username) {
 		// check certificate valid flag 'V'
 		if *StorageBackend == "kubernetes.secrets" {
-			err := app.EasyrsaRevoke(username)
+			err := oAdmin.KubeClient.EasyrsaRevoke(username)
 			if err != nil {
 				log.Error(err)
 			}
@@ -657,7 +656,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 	if checkUserExist(username) {
 		if *StorageBackend == "kubernetes.secrets" {
-			err := app.EasyrsaUnrevoke(username)
+			err := oAdmin.KubeClient.EasyrsaUnrevoke(username)
 			if err != nil {
 				log.Error(err)
 			}
@@ -726,7 +725,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string) {
 	if checkUserExist(username) {
 		if *StorageBackend == "kubernetes.secrets" {
-			err := app.EasyrsaRotate(username)
+			err := oAdmin.KubeClient.EasyrsaRotate(username)
 			if err != nil {
 				log.Error(err)
 			}
@@ -807,7 +806,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 func (oAdmin *OvpnAdmin) userDelete(username string) (error, string) {
 	if checkUserExist(username) {
 		if *StorageBackend == "kubernetes.secrets" {
-			err := app.EasyrsaDelete(username)
+			err := oAdmin.KubeClient.EasyrsaDelete(username)
 			if err != nil {
 				log.Error(err)
 			}
