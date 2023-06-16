@@ -9,6 +9,15 @@ import (
 
 func (oAdmin *OvpnAdmin) UserListHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info(r.RemoteAddr, " ", r.RequestURI)
+
+	if *StorageBackend == "kubernetes.secrets" {
+		err := oAdmin.KubeClient.updateIndexTxtOnDisk()
+		if err != nil {
+			log.Errorln(err)
+		}
+		oAdmin.clients = oAdmin.usersList()
+	}
+	
 	usersList, _ := json.Marshal(oAdmin.clients)
 	fmt.Fprintf(w, "%s", usersList)
 }
