@@ -1,5 +1,5 @@
 const path = require('path');
-//const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+// const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 module.exports = {
     mode: 'production',
@@ -17,7 +17,7 @@ module.exports = {
       filename: '[name].min.js'
     },
     plugins: [
-      //new BundleAnalyzerPlugin(),
+      // new BundleAnalyzerPlugin(),
     ],
     module: {
       rules: [
@@ -42,7 +42,8 @@ module.exports = {
     resolve: {
       alias: {
         'vue$': 'vue/dist/vue.esm.js',
-        //'bootstrap-vue$': 'bootstrap-vue/src/index.js'
+        //'bootstrap-vue$': 'bootstrap-vue/src/index.js',
+        // [path.resolve(__dirname, "../node_modules/bootstrap-vue/esm/icons/icons.js")]: false,
       },
       extensions: ['*', '.js', '.vue', '.json']
     },

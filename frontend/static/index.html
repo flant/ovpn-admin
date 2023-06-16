@@ -30,6 +30,7 @@
           type="button"
           :title="action.label"
           :data-username="props.row.Identity"
+          :data-secondfactor="props.row.SecondFactor"
           :data-name="action.name"
           :data-text="action.label"
           @click.left.stop="rowActionFn"
@@ -42,7 +43,7 @@
     </template>
   </vue-good-table>
 
-  <div class="modal-wrapper" v-if="u.modalNewUserVisible" v-bind:style="modalNewUserDisplay">
+  <div class="modal-wrapper" v-if="u.modalNewUserVisible" v-bind:style="[u.modalNewUserVisible ? {display: 'flex'} : {}]">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
         <div class="modal-header">
@@ -53,69 +54,55 @@
           <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword" v-if="modulesEnabled.includes('passwdAuth')">
         </div>
 
-        <div class="modal-footer justify-content-center" v-if="u.newUserCreateError.length > 0">
-          <div class="alert alert-danger" role="alert" >
-            {{ u.newUserCreateError }}
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+          <div class="alert" v-bind:class="alertCssClass" role="alert" > >
+            {{ u.modalActionMessage }}
           </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="createUser()">Create</button>
-            <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newUserName='';u.newUserPassword='nopass';u.modalNewUserVisible=false">Close</button>
+            <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newUserName='';u.newUserPassword='nopass';u.modalActionMessage='';u.modalNewUserVisible=false">Close</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="modal-wrapper" v-if="u.modalChangePasswordVisible" v-bind:style="modalChangePasswordDisplay">
+  <div class="modal-wrapper" v-if="u.modalChangePasswordVisible" v-bind:style="[u.modalChangePasswordVisible ? {display: 'flex'} : {}]">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
+
         <div class="modal-header">
           <h4>Change password for: <strong>{{ username }}</strong></h4>
         </div>
+
         <div class="modal-body">
           <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newPassword">
         </div>
 
-        <div class="modal-footer justify-content-center" v-if="u.passwordChangeMessage.length > 0">
-          <div class="alert" v-bind:class="passwordChangeStatusCssClass" role="alert" >
-            {{ u.passwordChangeMessage }}
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+          <div class="alert" v-bind:class="alertCssClass" role="alert" >
+            {{ u.modalActionMessage }}
           </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-success el-square modal-el-margin" v-on:click.stop="changeUserPassword(username)">Change password</button>
-          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.passwordChangeMessage='';u.modalChangePasswordVisible=false">Close</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.modalActionMessage='';u.modalChangePasswordVisible=false">Close</button>
         </div>
+
       </div>
     </div>
   </div>
 
-  <div class="modal-wrapper" v-if="u.modalShowConfigVisible" v-bind:style="modalShowConfigDisplay">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h4>ovpn config for: <strong>{{ username }}</strong></h4>
-        </div>
-        <div class="modal-body">
-          <div class="d-flex">
-            <pre class="modal-show-config-txt-box">{{ u.openvpnConfig }}</pre>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <div class="d-flex">
-            <button type="button" class="btn btn-success el-square modal-el-margin" v-clipboard:copy="u.openvpnConfig">Copy </button>
-            <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.openvpnConfig='';u.modalShowConfigVisible=false">Cancel</button>
-          </div>
-        </div>
-      </div>
-      </div>
-    </div>
 
-  <div class="modal-wrapper" v-if="u.modalShowCcdVisible" v-bind:style="modalShowCcdDisplay">
+  <div class="modal-wrapper" v-if="u.modalShowCcdVisible" v-bind:style="[u.modalShowCcdVisible ? {display: 'flex'} : {}]">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
+
         <div class="modal-header">
           <h3 class="static-address-label ">Routes table for: <strong>{{ username }}</strong></h3>
         </div>
+
         <div class="modal-body">
           <div class="input-group">
             <h5 class="static-address-label ">Static address:</h5>
@@ -125,6 +112,7 @@
             </div>
           </div>
         </div>
+
         <div class="modal-body">
           <div class="d-flex ">
             <table class="table table-bordered table-hover ccd-routes" >
@@ -172,59 +160,124 @@
             </table>
           </div>
         </div>
-        <div class="modal-footer justify-content-center" v-if="u.ccdApplyStatusMessage.length > 0">
-            <div class="alert" v-bind:class="ccdApplyStatusCssClass" role="alert">
-              {{ u.ccdApplyStatusMessage }}
+
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+            <div class="alert" v-bind:class="alertCssClass" role="alert">
+              {{ u.modalActionMessage }}
             </div>
         </div>
+
         <div class="modal-footer">
             <button type="button" class="btn btn-success el-square modal-el-margin" v-if="serverRole == 'master'" v-on:click.stop="ccdApply()">Save</button>
-            <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.ccd={Name:'',ClientAddress:'',CustomRoutes:[]};u.ccdApplyStatusMessage='';u.ccdApplyStatus='';u.modalShowCcdVisible=false">Close</button>
+            <button type="button" class="btn btn-primary el-square modal-el-margin" v-on:click.stop="u.ccd={Name:'',ClientAddress:'',CustomRoutes:[]};u.modalActionMessage='';u.ccdApplyStatus='';u.modalShowCcdVisible=false">Close</button>
         </div>
       </div>
+
     </div>
   </div>
 
-  <div class="modal-wrapper" v-if="u.modalRotateUserVisible" v-bind:style="modalRotateUserDisplay">
-    <div class="modal-dialog modal-lg">
+  <div class="modal-wrapper" v-if="u.modalRotateUserVisible" v-bind:style="[u.modalRotateUserVisible ? {display: 'flex'} : {}]">
+    <div class="modal-dialog">
       <div class="modal-content">
+
         <div class="modal-header">
           <h4>Confirm rotating certificates for user: <strong>{{ username }}</strong></h4>
         </div>
+
         <div class="modal-body" v-if="modulesEnabled.includes('passwdAuth')">
           <h4>Enter new password:</h4>
           <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newPassword">
         </div>
 
-        <div class="modal-footer justify-content-center" v-if="u.rotateUserMessage.length > 0">
-          <div class="alert" v-bind:class="userRotateStatusCssClass" role="alert" >
-            {{ u.rotateUserMessage }}
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+          <div class="alert" v-bind:class="alertCssClass" role="alert" >
+            {{ u.modalActionMessage }}
           </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-danger el-square modal-el-margin" v-on:click.stop="rotateUser(username)">Rotate</button>
-          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.rotateUserMessage='';u.modalRotateUserVisible=false">Close</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.newPassword='';u.modalActionMessage='';u.modalRotateUserVisible=false">Close</button>
         </div>
+
       </div>
     </div>
   </div>
 
-  <div class="modal-wrapper" v-if="u.modalDeleteUserVisible" v-bind:style="modalDeleteUserDisplay">
-    <div class="modal-dialog modal-lg">
+  <div class="modal-wrapper" v-if="u.modalDeleteUserVisible" v-bind:style="[u.modalDeleteUserVisible ? {display: 'flex'} : {}]">
+    <div class="modal-dialog">
       <div class="modal-content">
+
         <div class="modal-header">
           <h4>Confirm deleting user: <strong>{{ username }}</strong></h4>
         </div>
 
-        <div class="modal-footer justify-content-center" v-if="u.deleteUserMessage.length > 0">
-          <div class="alert" v-bind:class="deleteUserStatusCssClass" role="alert" >
-            {{ u.deleteUserMessage }}
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+          <div class="alert" v-bind:class="alertCssClass" role="alert" >
+            {{ u.modalActionMessage }}
           </div>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-danger el-square modal-el-margin" v-on:click.stop="deleteUser(username)">Delete</button>
-          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.deleteUserMessage='';u.modalDeleteUserVisible=false">Close</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.modalActionMessage='';u.modalDeleteUserVisible=false">Close</button>
         </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-wrapper" v-if="u.modalRegister2faVisible" v-bind:style="[u.modalRegister2faVisible ? {display: 'flex'} : {}]">
+    <div class="modal-dialog">
+      <div class="modal-content">
+
+        <div class="modal-header justify-content-center">
+          <h4>2FA</h4>
+        </div>
+
+        <div class="modal-body justify-content-center" v-if="!secondfactor">
+          <div style="text-align: center">
+            <vue-qr
+              :text=u.twofaurl
+              :size="300"
+            ></vue-qr>
+          </div>
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Can't scan the code? </h5>
+              <h6 class="card-subtitle text-muted">To add the entry manually, provide the following details to the application on your phone.</h6>
+              <div class="justify-content-left" style="margin-top: 1em;">
+                <p style="margin: 0;">
+                  Account: OVPN:{{username}}
+                </p>
+                <p style="margin: 0;">
+                  Key: <code class="two-factor-secret">{{u.secret}}</code>
+                </p>
+                <p style="margin: 0;">
+                  Time based: Yes
+                </p>
+              </div>
+            </div>
+          </div>
+          <input type="text" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Pin Code"  v-model="u.token">
+        </div>
+
+        <div class="modal-body justify-content-center" v-if="secondfactor">
+          <h4>2FA already configured for user: <strong>{{ username }}</strong></h4>
+        </div>
+
+        <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
+          <div class="alert" v-bind:class="alertCssClass" role="alert" >
+            {{ u.modalActionMessage }}
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-success el-square modal-el-margin" v-if="!secondfactor" v-on:click.stop="registerUser2faApp(username)">Register 2FA</button>
+          <button type="button" class="btn btn-danger el-square modal-el-margin" v-if="secondfactor" v-on:click.stop="resetUser2faApp(username)">Reset 2FA</button>
+          <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.modalActionMessage='';u.modalRegister2faVisible=false;u.token=''">Close</button>
+        </div>
+
       </div>
     </div>
   </div>

@@ -16,14 +16,6 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-      - name: Push openvpn image to Docker Hub
-        uses: docker/build-push-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/ovpn-admin
-          tags: openvpn-${{ steps.get_version.outputs.VERSION }}
-          dockerfile:  Dockerfile.openvpn
       - name: Push ovpn-admin image to Docker Hub
         uses: docker/build-push-action@v1
         with:

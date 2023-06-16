@@ -8,5 +8,3 @@ curl -sL https://deb.nodesource.com/setup_16.x | bash -
 apt-get install -y nodejs
 
 PATH=$PATH:~/go/bin
-
-go install github.com/gobuffalo/packr/v2/packr2@latest

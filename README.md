@@ -50,8 +50,11 @@ Ready docker images available on [Docker Hub](https://hub.docker.com/r/flant/ovp
 
 Requirements. You need Linux with the following components installed:
 - [golang](https://golang.org/doc/install)
-- [packr2](https://github.com/gobuffalo/packr#installation)
 - [nodejs/npm](https://nodejs.org/en/download/package-manager/)
+
+before version 2.1.0 you need 
+- [packr2](https://github.com/gobuffalo/packr#installation)
+
 
 Commands to execute:
 

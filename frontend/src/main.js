@@ -1,18 +1,18 @@
 import Vue from 'vue';
 import axios from 'axios';
+import VueQr from 'vue-qr'
 import VueCookies from 'vue-cookies'
 import BootstrapVue from 'bootstrap-vue'
-import VueClipboard from 'vue-clipboard2'
 import Notifications from 'vue-notification'
 import VueGoodTablePlugin from 'vue-good-table'
 
 Vue.use(VueCookies)
-Vue.use(VueClipboard)
 Vue.use(BootstrapVue)
 Vue.use(Notifications)
 Vue.use(VueGoodTablePlugin)
+Vue.use(VueQr)
 
-var axios_cfg = function(url, data='', type='form') {
+let axios_cfg = function(url, data='', type='form') {
   if (data == '') {
     return {
       method: 'get',
@@ -100,6 +100,14 @@ new Vue({
         showForModule: ['passwdAuth'],
       },
       {
+        name: 'u-2fa',
+        label: '2FA',
+        class: 'btn-success',
+        showWhenStatus: 'Active',
+        showForServerRole: ['master'],
+        showForModule: ['totpAuth'],
+      },
+      {
         name: 'u-revoke',
         label: 'Revoke',
         class: 'btn-warning',
@@ -147,14 +155,6 @@ new Vue({
         showForServerRole: ['master'],
         showForModule: ["core"],
       },
-      // {
-      //   name: 'u-show-config',
-      //   label: 'Show config',
-      //   class: 'btn-primary',
-      //   showWhenStatus: 'Active',
-      //   showForServerRole: ['master', 'slave'],
-      //   showForModule: ["core"],
-      // },
       {
         name: 'u-download-config',
         label: 'Download config',
@@ -189,27 +189,25 @@ new Vue({
     u: {
       newUserName: '',
       newUserPassword: '',
-      newUserCreateError: '',
       newPassword: '',
-      passwordChangeStatus: '',
-      passwordChangeMessage: '',
-      rotateUserMessage: '',
-      deleteUserMessage: '',
+      modalActionStatus: '',
+      modalActionMessage: '',
       modalNewUserVisible: false,
-      modalShowConfigVisible: false,
       modalShowCcdVisible: false,
       modalChangePasswordVisible: false,
       modalRotateUserVisible: false,
       modalDeleteUserVisible: false,
+      modalRegister2faVisible: false,
       openvpnConfig: '',
+      secret: '',
+      token: '',
+      twofaurl: '',
       ccd: {
         Name: '',
         ClientAddress: '',
         CustomRoutes: []
       },
       newRoute: {},
-      ccdApplyStatus: "",
-      ccdApplyStatusMessage: "",
     }
   },
   watch: {
@@ -220,47 +218,44 @@ new Vue({
     this.filters.hideRevoked = this.$cookies.isKey('hideRevoked') ? (this.$cookies.get('hideRevoked') == "true") : false
   },
   created() {
-    var _this = this;
+    let _this = this;
 
     _this.$root.$on('u-revoke', function (msg) {
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/revoke', data, 'form'))
       .then(function(response) {
         _this.getUserData();
         _this.$notify({title: 'User ' + _this.username + ' revoked!', type: 'warn'})
+      }).catch(function(error) {
+        console.error()
+        _this.$notify({title: 'Failed to revoke user ' + _this.username , type: 'error'})
       });
     })
     _this.$root.$on('u-unrevoke', function () {
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/unrevoke', data, 'form'))
       .then(function(response) {
         _this.getUserData();
         _this.$notify({title: 'User ' + _this.username + ' unrevoked!', type: 'success'})
+      }).catch(function(error) {
+        console.error()
+        _this.$notify({title: 'Failed to unrevoke user ' + _this.username , type: 'error'})
       });
     })
     _this.$root.$on('u-rotate', function () {
       _this.u.modalRotateUserVisible = true;
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
     })
     _this.$root.$on('u-delete', function () {
       _this.u.modalDeleteUserVisible = true;
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
-    })
-    _this.$root.$on('u-show-config', function () {
-      _this.u.modalShowConfigVisible = true;
-      var data = new URLSearchParams();
-      data.append('username', _this.username);
-      axios.request(axios_cfg('api/user/config/show', data, 'form'))
-      .then(function(response) {
-        _this.u.openvpnConfig = response.data;
-      });
     })
     _this.$root.$on('u-download-config', function () {
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/config/show', data, 'form'))
       .then(function(response) {
@@ -270,11 +265,14 @@ new Vue({
         link.download = _this.username + ".ovpn"
         link.click()
         URL.revokeObjectURL(link.href)
-      }).catch(console.error);
+      }).catch(function(error) {
+        console.error()
+        _this.$notify({title: 'Failed to download config for user ' + _this.username , type: 'error'})
+      });
     })
     _this.$root.$on('u-edit-ccd', function () {
       _this.u.modalShowCcdVisible = true;
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/ccd', data, 'form'))
       .then(function(response) {
@@ -283,7 +281,7 @@ new Vue({
     })
     _this.$root.$on('u-disconnect-user', function () {
       _this.u.modalShowCcdVisible = true;
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
       axios.request(axios_cfg('api/user/disconnect', data, 'form'))
       .then(function(response) {
@@ -292,43 +290,24 @@ new Vue({
     })
     _this.$root.$on('u-change-password', function () {
       _this.u.modalChangePasswordVisible = true;
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.username);
+    })
+    _this.$root.$on('u-2fa', function () {
+      _this.u.modalRegister2faVisible = true;
+      let data = new URLSearchParams();
+      data.append('username', _this.username);
+      data.append('secondfactor', _this.secondfactor);
+      data.append('token', _this.token);
+      _this.getUserTFAData(data);
     })
   },
   computed: {
     customAddressDynamic: function () {
       return this.u.ccd.ClientAddress == "dynamic"
     },
-    ccdApplyStatusCssClass: function () {
-        return this.u.ccdApplyStatus == 200 ? "alert-success" : "alert-danger"
-    },
-    passwordChangeStatusCssClass: function () {
-      return this.u.passwordChangeStatus == 200 ? "alert-success" : "alert-danger"
-    },
-    userRotateStatusCssClass: function () {
-      return this.u.roatateUserStatus == 200 ? "alert-success" : "alert-danger"
-    },
-    deleteUserStatusCssClass: function () {
-      return this.u.deleteUserStatus == 200 ? "alert-success" : "alert-danger"
-    },
-    modalNewUserDisplay: function () {
-      return this.u.modalNewUserVisible ? {display: 'flex'} : {}
-    },
-    modalShowConfigDisplay: function () {
-      return this.u.modalShowConfigVisible ? {display: 'flex'} : {}
-    },
-    modalShowCcdDisplay: function () {
-      return this.u.modalShowCcdVisible ? {display: 'flex'} : {}
-    },
-    modalChangePasswordDisplay: function () {
-      return this.u.modalChangePasswordVisible ? {display: 'flex'} : {}
-    },
-    modalRotateUserDisplay: function () {
-      return this.u.modalRotateUserVisible ? {display: 'flex'} : {}
-    },
-    modalDeleteUserDisplay: function () {
-      return this.u.modalDeleteUserVisible ? {display: 'flex'} : {}
+    alertCssClass: function () {
+      return this.u.modalActionStatus == 200 ? "alert-success" : "alert-danger"
     },
     revokeFilterText: function() {
       return this.filters.hideRevoked ? "Show revoked" : "Hide revoked"
@@ -342,8 +321,7 @@ new Vue({
         return this.rows
       }
     }
-
-  },
+},
   methods: {
     rowStyleClassFn: function(row) {
       if (row.ConnectionStatus == 'Connected') {
@@ -357,20 +335,81 @@ new Vue({
       }
       return ''
     },
+
     rowActionFn: function(e) {
       this.username = e.target.dataset.username;
+      this.secondfactor = e.target.dataset.secondfactor;
+
       this.$root.$emit(e.target.dataset.name);
     },
+
     getUserData: function() {
-      var _this = this;
+      let _this = this;
       axios.request(axios_cfg('api/users/list'))
         .then(function(response) {
           _this.rows = Array.isArray(response.data) ? response.data : [];
         });
     },
 
+    getUserTFAData: function(data) {
+      let _this = this;
+      if (!_this.secondfactor) {
+        axios.request(axios_cfg('api/user/2fa/secret', data, 'form'))
+          .then(function (response) {
+            _this.u.secret = response.data;
+            _this.u.twofaurl = "otpauth://totp/ovpn-" + _this.username + "?secret=" + _this.u.secret + "&issuer=OVPN";
+          });
+      }
+    },
+
+    registerUser2faApp: function(username) {
+      let _this = this;
+
+      let data = new URLSearchParams();
+      data.append('username', username);
+      data.append('token', _this.u.token);
+
+      axios.request(axios_cfg('api/user/2fa/register', data, 'form'))
+        .then(function(response) {
+          _this.u.modalActionStatus = 200;
+          _this.u.modalRegister2faVisible = false;
+          _this.getUserData();
+          _this.secondfactor = true;
+          _this.u.token = "";
+          _this.u.secret = "";
+          _this.$notify({title: '2FA application registered  for user ' + username, type: 'success'});
+        })
+        .catch(function(error) {
+          _this.u.modalActionStatus = error.response.status;
+          _this.u.modalActionMessage = error.response.data.message;
+          _this.$notify({title: 'Register 2FA application for user ' + username + ' failed!', type: 'error'});
+        })
+    },
+
+    resetUser2faApp: function(username) {
+      let _this = this;
+
+      let data = new URLSearchParams();
+      data.append('username', username);
+      data.append('secondfactor', _this.secondfactor);
+
+      axios.request(axios_cfg('api/user/2fa/reset', data, 'form'))
+        .then(function(response) {
+          _this.u.modalActionStatus = 200;
+          _this.secondfactor = false;
+          _this.getUserTFAData(data);
+          _this.getUserData();
+          _this.$notify({title: '2FA application reset for user ' + username, type: 'success'});
+        })
+        .catch(function(error) {
+          _this.u.modalActionStatus = error.response.status;
+          _this.u.modalActionMessage = error.response.data.message;
+          _this.$notify({title: 'Reset 2FA application for user ' + username + ' failed!', type: 'error'});
+        })
+    },
+
     getServerSetting: function() {
-      var _this = this;
+      let _this = this;
       axios.request(axios_cfg('api/server/settings'))
       .then(function(response) {
         _this.serverRole = response.data.serverRole;
@@ -386,11 +425,11 @@ new Vue({
     },
 
     createUser: function() {
-      var _this = this;
+      let _this = this;
 
-      _this.u.newUserCreateError = "";
+      _this.u.modalActionMessage = "";
 
-      var data = new URLSearchParams();
+      let data = new URLSearchParams();
       data.append('username', _this.u.newUserName);
       data.append('password', _this.u.newUserPassword);
 
@@ -398,105 +437,106 @@ new Vue({
 
       axios.request(axios_cfg('api/user/create', data, 'form'))
       .then(function(response) {
-        _this.$notify({title: 'New user ' + _this.username + ' created', type: 'success'})
+        _this.$notify({title: 'New user ' + _this.username + ' created', type: 'success'});
         _this.u.modalNewUserVisible = false;
         _this.u.newUserName = '';
         _this.u.newUserPassword = '';
         _this.getUserData();
       })
       .catch(function(error) {
-        _this.u.newUserCreateError = error.response.data;
-        _this.$notify({title: 'New user ' + _this.username + ' creation failed.', type: 'error'})
+        _this.u.modalActionMessage = error.response.data;
+        _this.$notify({title: 'New user ' + _this.username + ' creation failed.', type: 'error'});
 
       });
     },
 
     ccdApply: function() {
-      var _this = this;
+      let _this = this;
 
-      _this.u.ccdApplyStatus = "";
-      _this.u.ccdApplyStatusMessage = "";
+      _this.u.modalActionStatus= "";
+      _this.u.modalActionMessage = "";
 
       axios.request(axios_cfg('api/user/ccd/apply', JSON.stringify(_this.u.ccd), 'json'))
       .then(function(response) {
-        _this.u.ccdApplyStatus = 200;
-        _this.u.ccdApplyStatusMessage = response.data;
-        _this.$notify({title: 'Ccd for user ' + _this.username + ' applied', type: 'success'})
+        _this.u.modalActionStatus = 200;
+        _this.u.modalActionMessage = response.data;
+        _this.$notify({title: 'New CCD for user ' + _this.username + ' applied', type: 'success'});
       })
       .catch(function(error) {
-        _this.u.ccdApplyStatus = error.response.status;
-        _this.u.ccdApplyStatusMessage = error.response.data;
-        _this.$notify({title: 'Ccd for user ' + _this.username + ' apply failed ', type: 'error'})
+        _this.u.modalActionStatus = error.response.status;
+        _this.u.modalActionMessage = error.response.data.message;
+        _this.$notify({title: 'Apply new CCD for user ' + _this.username + 'failed ', type: 'error'});
       });
     },
 
-    changeUserPassword: function(user) {
-      var _this = this;
+    changeUserPassword: function(username) {
+      let _this = this;
 
-      _this.u.passwordChangeMessage = "";
+      _this.u.modalActionMessage = "";
 
-      var data = new URLSearchParams();
-      data.append('username', user);
+      let data = new URLSearchParams();
+      data.append('username', username);
       data.append('password', _this.u.newPassword);
 
       axios.request(axios_cfg('api/user/change-password', data, 'form'))
         .then(function(response) {
-          _this.u.passwordChangeStatus = 200;
+          _this.u.modalActionStatus = 200;
           _this.u.newPassword = '';
           _this.getUserData();
           _this.u.modalChangePasswordVisible = false;
-          _this.$notify({title: 'Password for user ' + _this.username + ' changed!', type: 'success'})
+          _this.$notify({title: 'Password for user ' + username + ' changed!', type: 'success'});
         })
         .catch(function(error) {
-          _this.u.passwordChangeStatus = error.response.status;
-          _this.u.passwordChangeMessage = error.response.data.message;
-          _this.$notify({title: 'Changing password for user ' + _this.username + ' failed!', type: 'error'})
+          _this.u.modalActionStatus = error.response.status;
+          _this.u.modalActionMessage = error.response.data.message;
+          _this.$notify({title: 'Changing password for user ' + username + ' failed!', type: 'error'});
         });
     },
 
-    rotateUser: function(user) {
-      var _this = this;
+    rotateUser: function(username) {
+      let _this = this;
 
-      _this.u.rotateUserMessage = "";
+      _this.u.modalActionMessage = "";
 
-      var data = new URLSearchParams();
-      data.append('username', user);
+      let data = new URLSearchParams();
+      data.append('username', username);
       data.append('password', _this.u.newPassword);
 
       axios.request(axios_cfg('api/user/rotate', data, 'form'))
         .then(function(response) {
-          _this.u.roatateUserStatus = 200;
+          _this.u.modalActionStatus = 200;
           _this.u.newPassword = '';
           _this.getUserData();
           _this.u.modalRotateUserVisible = false;
-          _this.$notify({title: 'Certificates for user ' + _this.username + ' rotated!', type: 'success'})
+          _this.$notify({title: 'Certificates for user ' + username + ' rotated!', type: 'success'});
         })
         .catch(function(error) {
-          _this.u.roatateUserStatus = error.response.status;
-          _this.u.rotateUserMessage = error.response.data.message;
-          _this.$notify({title: 'Rotate certificates for user ' + _this.username + ' failed!', type: 'error'})
+          _this.u.modalActionStatus = error.response.status;
+          _this.u.modalActionMessage = error.response.data.message;
+          _this.$notify({title: 'Rotate certificates for user ' + username + ' failed!', type: 'error'});
         })
     },
-    deleteUser: function(user) {
-      var _this = this;
+
+    deleteUser: function(username) {
+      let _this = this;
 
       _this.u.deleteUserMessage = "";
 
-      var data = new URLSearchParams();
-      data.append('username', user);
+      let data = new URLSearchParams();
+      data.append('username', username);
 
       axios.request(axios_cfg('api/user/delete', data, 'form'))
         .then(function(response) {
-          _this.u.deleteUserStatus = 200;
+          _this.u.modalActionStatus = 200;
           _this.u.newPassword = '';
           _this.getUserData();
           _this.u.modalDeleteUserVisible = false;
-          _this.$notify({title: 'User ' + _this.username + ' deleted!', type: 'success'})
+          _this.$notify({title: 'User ' + username + ' deleted!', type: 'success'});
         })
         .catch(function(error) {
-          _this.u.deleteUserStatus = error.response.status;
-          _this.u.deleteUserMessage = error.response.data.message;
-          _this.$notify({title: 'Deleting user ' + _this.username + ' failed!', type: 'error'})
+          _this.u.modalActionStatus = error.response.status;
+          _this.u.modalActionMessage = error.response.data.message;
+          _this.$notify({title: 'Deleting user ' + username + ' failed!', type: 'error'});
         })
     },
   }

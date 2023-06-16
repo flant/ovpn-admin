@@ -4,8 +4,7 @@ services:
   openvpn:
     build:
       context: .
-      dockerfile: Dockerfile.openvpn
-    image: openvpn:local
+    image: ovpn-admin:local
     command: /etc/openvpn/setup/configure.sh
     environment:
       - OVPN_ROLE=slave
