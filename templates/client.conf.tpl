@@ -8,7 +8,8 @@ nobind
 dev tun
 cipher AES-128-CBC
 key-direction 1
-#redirect-gateway def1
+# Comment next line if you don't want VPN to send all traffic though itself.
+redirect-gateway def1
 tls-client
 remote-cert-tls server
 # uncomment below lines for use with linux
