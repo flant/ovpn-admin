@@ -1,3 +1,7 @@
+# ovpn-admin-suite
+
+This repo is mostly fork of ovpn-amdin, but with adding complete functionality to make VPN service quickly installable, have admin panel protected by Basic Auth and SSL.
+
 # ovpn-admin
 
 Simple web UI to manage OpenVPN users, their certificates & routes in Linux. While backend is written in Go, frontend is based on Vue.js.
