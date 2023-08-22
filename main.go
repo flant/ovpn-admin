@@ -36,12 +36,12 @@ import (
 const (
 	usernameRegexp       = `^([a-zA-Z0-9_.-@])+$`
 	passwordMinLength    = 6
-	downloadCertsApiUrl  = "/api/data/certs/download"
-	downloadCcdApiUrl    = "/api/data/ccd/download"
 	certsArchiveFileName = "certs.tar.gz"
 	ccdArchiveFileName   = "ccd.tar.gz"
 	indexTxtDateLayout   = "060102150405Z"
 	stringDateFormat     = "2006-01-02 15:04:05"
+	downloadCertsApiUrl  = "api/data/certs/download"
+	downloadCcdApiUrl    = "api/data/ccd/download"
 
 	kubeNamespaceFilePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 )
@@ -49,6 +49,7 @@ const (
 var (
 	listenHost               = kingpin.Flag("listen.host", "host for ovpn-admin").Default("0.0.0.0").Envar("OVPN_LISTEN_HOST").String()
 	listenPort               = kingpin.Flag("listen.port", "port for ovpn-admin").Default("8080").Envar("OVPN_LISTEN_PORT").String()
+  listenBaseUrl            = kingpin.Flag("listen.base-url", "base url for ovpn-admin").Default("/").Envar("OVPN_LISTEN_BASE_URL").String()
 	serverRole               = kingpin.Flag("role", "server role, master or slave").Default("master").Envar("OVPN_ROLE").HintOptions("master", "slave").String()
 	masterHost               = kingpin.Flag("master.host", "URL for the master server").Default("http://127.0.0.1").Envar("OVPN_MASTER_HOST").String()
 	masterBasicAuthUser      = kingpin.Flag("master.basic-auth.user", "user for master server's Basic Auth").Default("").Envar("OVPN_MASTER_USER").String()
@@ -63,6 +64,7 @@ var (
 	metricsPath              = kingpin.Flag("metrics.path", "URL path for exposing collected metrics").Default("/metrics").Envar("OVPN_METRICS_PATH").String()
 	easyrsaDirPath           = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa").Envar("EASYRSA_PATH").String()
 	indexTxtPath             = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file").Default("").Envar("OVPN_INDEX_PATH").String()
+  easyrsaBinPath           = kingpin.Flag("easyrsa.bin-path", "path to easyrsa script").Default("easyrsa").Envar("EASYRSA_BIN_PATH").String()
 	ccdEnabled               = kingpin.Flag("ccd", "enable client-config-dir").Default("false").Envar("OVPN_CCD").Bool()
 	ccdDir                   = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").Envar("OVPN_CCD_PATH").String()
 	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").Envar("OVPN_TEMPLATES_CC_PATH").String()
@@ -91,6 +93,9 @@ var logFormats = map[string]log.Formatter{
 	"text": &log.TextFormatter{},
 	"json": &log.JSONFormatter{},
 }
+
+var (
+)
 
 var (
 	ovpnServerCertExpire = prometheus.NewGauge(prometheus.GaugeOpts{
@@ -555,32 +560,32 @@ func main() {
 	staticBox := packr.New("static", "./frontend/static")
 	static := CacheControlWrapper(http.FileServer(staticBox))
 
-	http.Handle("/", static)
-	http.HandleFunc("/api/server/settings", ovpnAdmin.serverSettingsHandler)
-	http.HandleFunc("/api/users/list", ovpnAdmin.userListHandler)
-	http.HandleFunc("/api/user/create", ovpnAdmin.userCreateHandler)
-	http.HandleFunc("/api/user/change-password", ovpnAdmin.userChangePasswordHandler)
-	http.HandleFunc("/api/user/rotate", ovpnAdmin.userRotateHandler)
-	http.HandleFunc("/api/user/delete", ovpnAdmin.userDeleteHandler)
-	http.HandleFunc("/api/user/revoke", ovpnAdmin.userRevokeHandler)
-	http.HandleFunc("/api/user/unrevoke", ovpnAdmin.userUnrevokeHandler)
-	http.HandleFunc("/api/user/config/show", ovpnAdmin.userShowConfigHandler)
-	http.HandleFunc("/api/user/disconnect", ovpnAdmin.userDisconnectHandler)
-	http.HandleFunc("/api/user/statistic", ovpnAdmin.userStatisticHandler)
-	http.HandleFunc("/api/user/ccd", ovpnAdmin.userShowCcdHandler)
-	http.HandleFunc("/api/user/ccd/apply", ovpnAdmin.userApplyCcdHandler)
+	http.Handle(*listenBaseUrl, http.StripPrefix(strings.TrimRight(*listenBaseUrl, "/"), static))
+	http.HandleFunc(*listenBaseUrl + "api/server/settings", ovpnAdmin.serverSettingsHandler)
+	http.HandleFunc(*listenBaseUrl + "api/users/list", ovpnAdmin.userListHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/create", ovpnAdmin.userCreateHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/change-password", ovpnAdmin.userChangePasswordHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/rotate", ovpnAdmin.userRotateHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/delete", ovpnAdmin.userDeleteHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/revoke", ovpnAdmin.userRevokeHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/unrevoke", ovpnAdmin.userUnrevokeHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/config/show", ovpnAdmin.userShowConfigHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/disconnect", ovpnAdmin.userDisconnectHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/statistic", ovpnAdmin.userStatisticHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/ccd", ovpnAdmin.userShowCcdHandler)
+	http.HandleFunc(*listenBaseUrl + "api/user/ccd/apply", ovpnAdmin.userApplyCcdHandler)
 
-	http.HandleFunc("/api/sync/last/try", ovpnAdmin.lastSyncTimeHandler)
-	http.HandleFunc("/api/sync/last/successful", ovpnAdmin.lastSuccessfulSyncTimeHandler)
-	http.HandleFunc(downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
-	http.HandleFunc(downloadCcdApiUrl, ovpnAdmin.downloadCcdHandler)
+	http.HandleFunc(*listenBaseUrl + "api/sync/last/try", ovpnAdmin.lastSyncTimeHandler)
+	http.HandleFunc(*listenBaseUrl + "api/sync/last/successful", ovpnAdmin.lastSuccessfulSyncTimeHandler)
+	http.HandleFunc(*listenBaseUrl + downloadCertsApiUrl, ovpnAdmin.downloadCertsHandler)
+	http.HandleFunc(*listenBaseUrl + downloadCcdApiUrl, ovpnAdmin.downloadCcdHandler)
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(ovpnAdmin.promRegistry, promhttp.HandlerOpts{}))
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(*listenBaseUrl + "ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
 	})
 
-	log.Printf("Bind: http://%s:%s", *listenHost, *listenPort)
+	log.Printf("Bind: http://%s:%s%s", *listenHost, *listenPort, *listenBaseUrl)
 	log.Fatal(http.ListenAndServe(*listenHost+":"+*listenPort, nil))
 }
 
@@ -983,7 +988,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 			log.Error(err)
 		}
 	} else {
-		o := runBash(fmt.Sprintf("cd %s && easyrsa build-client-full %s nopass 1>/dev/null", *easyrsaDirPath, username))
+		o := runBash(fmt.Sprintf("cd %s && %s build-client-full %s nopass 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
 		log.Debug(o)
 	}
 
@@ -1046,7 +1051,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 				log.Error(err)
 			}
 		} else {
-			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && easyrsa gen-crl 1>/dev/null", *easyrsaDirPath, username))
+			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
 			log.Debugln(o)
 		}
 
@@ -1110,7 +1115,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 							log.Error(err)
 						}
 
-						_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null", *easyrsaDirPath))
+						_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath))
 
 						if *authByPassword {
 							o := runBash(fmt.Sprintf("openvpn-user restore --db-path %s --user %s", *authDatabase, username))
@@ -1201,7 +1206,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				log.Error(err)
 			}
 
-			_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null", *easyrsaDirPath))
+			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath))
 		}
 		crlFix()
 		oAdmin.clients = oAdmin.usersList()
@@ -1233,7 +1238,7 @@ func (oAdmin *OvpnAdmin) userDelete(username string) (error, string) {
 			if err != nil {
 				log.Error(err)
 			}
-			_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null ", *easyrsaDirPath))
+			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null ", *easyrsaDirPath, *easyrsaBinPath))
 		}
 		crlFix()
 		oAdmin.clients = oAdmin.usersList()
@@ -1437,7 +1442,7 @@ func (oAdmin *OvpnAdmin) downloadCerts() bool {
 		}
 	}
 
-	err := fDownload(certsArchivePath, *masterHost+downloadCertsApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
+	err := fDownload(certsArchivePath, *masterHost+*listenBaseUrl+downloadCertsApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
 	if err != nil {
 		log.Error(err)
 		return false
@@ -1454,7 +1459,7 @@ func (oAdmin *OvpnAdmin) downloadCcd() bool {
 		}
 	}
 
-	err := fDownload(ccdArchivePath, *masterHost+downloadCcdApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
+	err := fDownload(ccdArchivePath, *masterHost+*listenBaseUrl+downloadCcdApiUrl+"?token="+oAdmin.masterSyncToken, oAdmin.masterHostBasicAuth)
 	if err != nil {
 		log.Error(err)
 		return false

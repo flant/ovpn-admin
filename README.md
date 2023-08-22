@@ -94,6 +94,9 @@ Flags:
   --listen.port="8080"         port for ovpn-admin
   (or OVPN_LISTEN_PORT)
 
+  --listen.base-url="/"        base URL for ovpn-admin web files
+  (or $OVPN_LISTEN_BASE_URL)
+
   --role="master"              server role, master or slave
   (or OVPN_ROLE)
 
