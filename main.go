@@ -95,9 +95,6 @@ var logFormats = map[string]log.Formatter{
 }
 
 var (
-)
-
-var (
 	ovpnServerCertExpire = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "ovpn_server_cert_expire",
 		Help: "openvpn server certificate expire time in days",
