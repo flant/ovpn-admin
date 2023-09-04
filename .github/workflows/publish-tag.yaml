@@ -16,19 +16,24 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
       - name: Push openvpn image to Docker Hub
-        uses: docker/build-push-action@v1
+        uses: docker/build-push-action@v4
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/ovpn-admin
-          tags: openvpn-${{ steps.get_version.outputs.VERSION }}
-          dockerfile:  Dockerfile.openvpn
+          tags: flant/ovpn-admin:openvpn-${{ steps.get_version.outputs.VERSION }}
+          platforms: linux/amd64,linux/arm64,linux/arm,linux/386
+          file: Dockerfile.openvpn
+          push: true
       - name: Push ovpn-admin image to Docker Hub
-        uses: docker/build-push-action@v1
+        uses: docker/build-push-action@v4
         with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-          repository: flant/ovpn-admin
-          tags: ${{ steps.get_version.outputs.VERSION }}
-          dockerfile: Dockerfile
+          tags: flant/ovpn-admin:${{ steps.get_version.outputs.VERSION }}
+          platforms: linux/amd64,linux/arm64,linux/arm,linux/386
+          file: Dockerfile
+          push: true
