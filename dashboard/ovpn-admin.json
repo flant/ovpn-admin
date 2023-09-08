@@ -31,7 +31,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -90,7 +90,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -149,7 +149,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -206,7 +206,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -263,7 +263,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -305,7 +305,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "8.5.2",
+      "pluginVersion": "8.5.13",
       "targets": [
         {
           "expr": "ovpn_clients_expired",
@@ -320,7 +320,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -381,7 +381,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -469,7 +469,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -557,7 +557,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -647,7 +647,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -733,7 +733,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "description": "value show last connection check time",
       "fieldConfig": {
@@ -794,7 +794,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "description": "value shows when connection was started",
       "fieldConfig": {
@@ -855,7 +855,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "P0D6E4079E36703EB"
+        "uid": "$ds_prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -928,7 +928,26 @@
   "style": "dark",
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "default",
+          "value": "default"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "label": "Prometheus",
+        "name": "ds_prometheus",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
   },
   "time": {
     "from": "now-15m",
