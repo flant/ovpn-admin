@@ -1048,7 +1048,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 				log.Error(err)
 			}
 		} else {
-			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
+			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && %s gen-crl 1>/dev/null", *easyrsaDirPath, username, *easyrsaBinPath))
 			log.Debugln(o)
 		}
 
