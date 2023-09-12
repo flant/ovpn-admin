@@ -854,7 +854,7 @@ func (oAdmin *OvpnAdmin) getCcd(username string) Ccd {
 }
 
 func checkStaticAddressIsFree(staticAddress string, username string) bool {
-	o := runBash(fmt.Sprintf("grep -rl ' %s ' %s | grep -vx %s/%s | wc -l", staticAddress, *ccdDir, *ccdDir, username))
+	o := runBash(fmt.Sprintf("grep -rl ' %[1]s ' %[2]s | grep -vx %[2]s/%[3]s | wc -l", staticAddress, *ccdDir, username))
 
 	if strings.TrimSpace(o) == "0" {
 		return true
@@ -1004,7 +1004,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (error, string) {
 
 	if checkUserExist(username) {
-		o := runBash(fmt.Sprintf("openvpn-user check --db.path %s --user %s | grep %s | wc -l", *authDatabase, username, username))
+		o := runBash(fmt.Sprintf("openvpn-user check --db.path %[1]s --user %[2]s | grep %[2]s | wc -l", *authDatabase, username))
 		log.Debug(o)
 
 		if err := validatePassword(password); err != nil {
@@ -1048,7 +1048,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 				log.Error(err)
 			}
 		} else {
-			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
+			o := runBash(fmt.Sprintf("cd %[1]s && echo yes | %[2]s revoke %[3]s 1>/dev/null && %[2]s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
 			log.Debugln(o)
 		}
 
