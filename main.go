@@ -49,7 +49,7 @@ const (
 var (
 	listenHost               = kingpin.Flag("listen.host", "host for ovpn-admin").Default("0.0.0.0").Envar("OVPN_LISTEN_HOST").String()
 	listenPort               = kingpin.Flag("listen.port", "port for ovpn-admin").Default("8080").Envar("OVPN_LISTEN_PORT").String()
-  listenBaseUrl            = kingpin.Flag("listen.base-url", "base url for ovpn-admin").Default("/").Envar("OVPN_LISTEN_BASE_URL").String()
+	listenBaseUrl            = kingpin.Flag("listen.base-url", "base url for ovpn-admin").Default("/").Envar("OVPN_LISTEN_BASE_URL").String()
 	serverRole               = kingpin.Flag("role", "server role, master or slave").Default("master").Envar("OVPN_ROLE").HintOptions("master", "slave").String()
 	masterHost               = kingpin.Flag("master.host", "URL for the master server").Default("http://127.0.0.1").Envar("OVPN_MASTER_HOST").String()
 	masterBasicAuthUser      = kingpin.Flag("master.basic-auth.user", "user for master server's Basic Auth").Default("").Envar("OVPN_MASTER_USER").String()
@@ -64,7 +64,7 @@ var (
 	metricsPath              = kingpin.Flag("metrics.path", "URL path for exposing collected metrics").Default("/metrics").Envar("OVPN_METRICS_PATH").String()
 	easyrsaDirPath           = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa").Envar("EASYRSA_PATH").String()
 	indexTxtPath             = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file").Default("").Envar("OVPN_INDEX_PATH").String()
-  easyrsaBinPath           = kingpin.Flag("easyrsa.bin-path", "path to easyrsa script").Default("easyrsa").Envar("EASYRSA_BIN_PATH").String()
+	easyrsaBinPath           = kingpin.Flag("easyrsa.bin-path", "path to easyrsa script").Default("easyrsa").Envar("EASYRSA_BIN_PATH").String()
 	ccdEnabled               = kingpin.Flag("ccd", "enable client-config-dir").Default("false").Envar("OVPN_CCD").Bool()
 	ccdDir                   = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").Envar("OVPN_CCD_PATH").String()
 	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").Envar("OVPN_TEMPLATES_CC_PATH").String()
@@ -854,7 +854,7 @@ func (oAdmin *OvpnAdmin) getCcd(username string) Ccd {
 }
 
 func checkStaticAddressIsFree(staticAddress string, username string) bool {
-	o := runBash(fmt.Sprintf("grep -rl ' %s ' %s | grep -vx %s/%s | wc -l", staticAddress, *ccdDir, *ccdDir, username))
+	o := runBash(fmt.Sprintf("grep -rl ' %[1]s ' %[2]s | grep -vx %[2]s/%[3]s | wc -l", staticAddress, *ccdDir, username))
 
 	if strings.TrimSpace(o) == "0" {
 		return true
@@ -1004,7 +1004,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (bool, string) {
 func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (error, string) {
 
 	if checkUserExist(username) {
-		o := runBash(fmt.Sprintf("openvpn-user check --db.path %s --user %s | grep %s | wc -l", *authDatabase, username, username))
+		o := runBash(fmt.Sprintf("openvpn-user check --db.path %[1]s --user %[2]s | grep %[2]s | wc -l", *authDatabase, username))
 		log.Debug(o)
 
 		if err := validatePassword(password); err != nil {
@@ -1048,7 +1048,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 				log.Error(err)
 			}
 		} else {
-			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && %s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
+			o := runBash(fmt.Sprintf("cd %[1]s && echo yes | %[2]s revoke %[3]s 1>/dev/null && %[2]s gen-crl 1>/dev/null", *easyrsaDirPath, *easyrsaBinPath, username))
 			log.Debugln(o)
 		}
 
