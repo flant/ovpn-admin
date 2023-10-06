@@ -41,7 +41,7 @@ fi
 
 cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
-if [ ${OVPN_PASSWD_AUTH} = "true" ]; then
+if [ ${OVPN_AUTH} == "TOTP" ] || [ ${OVPN_AUTH} == "PASSWORD" ]; then
   mkdir -p /etc/openvpn/scripts/
   cp -f /etc/openvpn/setup/auth.sh /etc/openvpn/scripts/auth.sh
   chmod +x /etc/openvpn/scripts/auth.sh

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -85,24 +84,17 @@ func main() {
 
 	ovpnAdmin.Modules = append(ovpnAdmin.Modules, "core")
 
-	if *backend.AuthByPassword {
-		db, err := sql.Open("sqlite3", *backend.AuthDatabase)
-		if err != nil {
-			kingpin.Fatalf(err.Error())
-		}
-		defer func(db *sql.DB) {
-			err = db.Close()
-			if err != nil {
-				kingpin.Fatalf(err.Error())
-			}
-		}(db)
-		ovpnAdmin.OUser.Database = db
-
+	switch *backend.AuthType {
+	case "TOTP":
+		ovpnAdmin.ExtraAuth = true
+		ovpnAdmin.OUser.Database = backend.OpenDB(*backend.AuthDatabase)
+		defer ovpnAdmin.OUser.Database.Close()
+		ovpnAdmin.Modules = append(ovpnAdmin.Modules, "totpAuth")
+	case "PASSWORD":
+		ovpnAdmin.ExtraAuth = true
+		ovpnAdmin.OUser.Database = backend.OpenDB(*backend.AuthDatabase)
+		defer ovpnAdmin.OUser.Database.Close()
 		ovpnAdmin.Modules = append(ovpnAdmin.Modules, "passwdAuth")
-
-		if *backend.AuthTFA {
-			ovpnAdmin.Modules = append(ovpnAdmin.Modules, "totpAuth")
-		}
 	}
 
 	if *backend.CcdEnabled {
@@ -152,11 +144,10 @@ func main() {
 		http.HandleFunc("/api/user/ccd/apply", ovpnAdmin.UserApplyCcdHandler)
 	}
 
-	if *backend.AuthByPassword {
+	if ovpnAdmin.ExtraAuth {
 		http.HandleFunc("/api/user/change-password", ovpnAdmin.UserChangePasswordHandler)
 		http.HandleFunc("/api/auth/check", ovpnAdmin.AuthCheckHandler)
-
-		if *backend.AuthTFA {
+		if *backend.AuthType == "TOTP" {
 			http.HandleFunc("/api/user/2fa/secret", ovpnAdmin.UserGetSecretHandler)
 			http.HandleFunc("/api/user/2fa/register", ovpnAdmin.UserSetupTFAHandler)
 			http.HandleFunc("/api/user/2fa/reset", ovpnAdmin.UserResetTFAHandler)

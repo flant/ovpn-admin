@@ -152,7 +152,7 @@ func (oAdmin *OvpnAdmin) renderClientConfig(username string) string {
 			conf.Key = fRead(*EasyrsaDirPath + "/pki/private/" + username + ".key")
 		}
 
-		conf.PasswdAuth = *AuthByPassword
+		conf.PasswdAuth = oAdmin.ExtraAuth
 
 		t := oAdmin.getTemplate("client.conf.tpl", "client-config", *clientConfigTemplatePath)
 
@@ -313,8 +313,12 @@ func (oAdmin *OvpnAdmin) usersList() []OpenvpnClient {
 				connectedUniqUsers += 1
 			}
 
-			if oAdmin.isSecondFactorConfigured(ovpnClient.Identity) {
-				ovpnClient.SecondFactor = true
+			if oAdmin.ExtraAuth{
+				if oAdmin.isSecondFactorConfigured(ovpnClient.Identity) {
+					ovpnClient.SecondFactor = "enabled"
+				} else {
+					ovpnClient.SecondFactor = "disabled"
+				}
 			}
 
 			users = append(users, ovpnClient)
@@ -354,7 +358,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 		return err.Error(), err
 	}
 
-	if *AuthByPassword {
+	if oAdmin.ExtraAuth {
 		if err := validatePassword(password); err != nil {
 			log.Debugf("userCreate: authByPassword(): %s", err.Error())
 			return err.Error(), err
@@ -367,7 +371,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 			log.Error(err)
 			return err.Error(), err
 		}
-		if *AuthByPassword {
+		if oAdmin.ExtraAuth {
 			err = oAdmin.KubeClient.updatePasswordSecret(username, []byte(password))
 			if err != nil {
 				return err.Error(), err
@@ -376,7 +380,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 	} else {
 		o := runBash(fmt.Sprintf("cd %s && easyrsa build-client-full %s nopass 1>/dev/null", *EasyrsaDirPath, username))
 		log.Debug(o)
-		if *AuthByPassword {
+		if oAdmin.ExtraAuth {
 			_, err := oAdmin.OUser.CreateUser(username, password)
 			if err != nil {
 				return err.Error(), err
@@ -435,14 +439,21 @@ func (oAdmin *OvpnAdmin) isSecondFactorConfigured(username string) bool {
 		}
 		return sfe
 	case "filesystem":
-		sfe, err := oAdmin.OUser.IsSecondFactorEnabled(username)
-		if err != nil {
-			return false
+		switch *AuthType {
+		case "TOTP":
+			sfe, err := oAdmin.OUser.IsSecondFactorEnabled(username)
+			if err != nil {
+				return false
+			}
+			return sfe
+		case "PASSWORD":
+			return true
+			//TODO: check if password is exist in db
 		}
-		return sfe
 	default:
 		return false
 	}
+	return false
 }
 
 func (oAdmin *OvpnAdmin) getUserSecret(username string) (string, error) {
@@ -538,11 +549,11 @@ func (oAdmin *OvpnAdmin) registerUserAuthApp(username, totp string) error {
 
 		for i, u := range oAdmin.clients {
 			if u.Identity == username {
-				oAdmin.clients[i].SecondFactor = true
+				oAdmin.clients[i].SecondFactor = "enabled"
 			}
 		}
 
-		log.Infof("2FA configured for user %s", username)
+		log.Infof("TOTP configured for user %s", username)
 		return nil
 	}
 	return fmt.Errorf("user \"%s\" not found", username)
@@ -567,7 +578,7 @@ func (oAdmin *OvpnAdmin) resetUserAuthApp(username string) error {
 
 		for i, u := range oAdmin.clients {
 			if u.Identity == username {
-				oAdmin.clients[i].SecondFactor = false
+				oAdmin.clients[i].SecondFactor = "disabled"
 			}
 		}
 		return nil
@@ -587,7 +598,12 @@ func (oAdmin *OvpnAdmin) checkAuth(username, token string) error {
 				return authErr
 			}
 		} else {
-			auth, authErr = oAdmin.OUser.AuthUser(username, "", token)
+			switch *AuthType {
+			case "TOTP":
+				auth, authErr = oAdmin.OUser.AuthUser(username, "", token)
+			case "PASSWORD":
+				auth, authErr = oAdmin.OUser.AuthUser(username, token, "")
+			}
 			if authErr != nil {
 				return authErr
 			}
@@ -625,7 +641,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 			log.Debugln(o)
 		}
 
-		if *AuthByPassword {
+		if oAdmin.ExtraAuth {
 			if oAdmin.OUser.CheckUserExistent(username) {
 				revokeMsg, revokeErr := oAdmin.OUser.RevokedUser(username)
 				log.Debug(revokeMsg)
@@ -693,7 +709,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 
 						_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null", *EasyrsaDirPath))
 
-						if *AuthByPassword {
+						if oAdmin.ExtraAuth {
 							if oAdmin.OUser.CheckUserExistent(username) {
 								restoreMsg, restoreErr := oAdmin.OUser.RestoreUser(username)
 								log.Debug(restoreMsg)
@@ -750,7 +766,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				log.Error(err)
 			}
 
-			if *AuthByPassword {
+			if oAdmin.ExtraAuth {
 				if oAdmin.OUser.CheckUserExistent(username) {
 					deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
 					log.Debug(deleteMsg)
@@ -819,7 +835,7 @@ func (oAdmin *OvpnAdmin) userDelete(username string) (error, string) {
 					break
 				}
 			}
-			if *AuthByPassword {
+			if oAdmin.ExtraAuth {
 				if oAdmin.OUser.CheckUserExistent(username) {
 					deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
 					log.Debug(deleteMsg)
@@ -1094,4 +1110,18 @@ func (oAdmin *OvpnAdmin) SyncWithMaster() {
 		time.Sleep(time.Duration(*masterSyncFrequency) * time.Second)
 		oAdmin.SyncDataFromMaster()
 	}
+}
+
+func (oAdmin *OvpnAdmin) IsTotpAuth() bool {
+	if IsModuleEnabled("totpAuth", oAdmin.Modules) {
+		return true
+	} 
+	return false
+}
+
+func (oAdmin *OvpnAdmin) IsPasswdAuth() bool {
+	if IsModuleEnabled("passwdAuth", oAdmin.Modules) {
+		return true
+	} 
+	return false
 }

@@ -36,7 +36,10 @@
           @click.left.stop="rowActionFn"
           v-for="action in actions"
           v-bind:class="action.class"
-          v-if="action.showWhenStatus == props.row.AccountStatus && action.showForServerRole.includes(serverRole) && action.showForModule.some(p=> modulesEnabled.includes(p))">
+          v-if="action.showWhenStatus == props.row.AccountStatus &&
+                ( props.row.SecondFactor != 'disabled' || !(action.Require2FA) ) &&
+                action.showForServerRole.includes(serverRole) &&
+                action.showForModule.some(p=> modulesEnabled.includes(p))">
           {{ action.label }}
         </button>
       </span>
@@ -51,7 +54,7 @@
         </div>
         <div class="modal-body">
           <input type="text" class="form-control el-square modal-el-margin" placeholder="Username [_a-zA-Z0-9\.-]" v-model="u.newUserName">
-          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword" v-if="modulesEnabled.includes('passwdAuth')">
+          <input type="password" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Password [_a-zA-Z0-9\.-]" v-model="u.newUserPassword" v-if="modulesEnabled.includes('passwdAuth')||modulesEnabled.includes('totpAuth')">
         </div>
 
         <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
@@ -232,10 +235,10 @@
       <div class="modal-content">
 
         <div class="modal-header justify-content-center">
-          <h4>2FA</h4>
+          <h4>2FA TOTP</h4>
         </div>
 
-        <div class="modal-body justify-content-center" v-if="!secondfactor">
+        <div class="modal-body justify-content-center" v-if="secondfactor == 'disabled' ">
           <div style="text-align: center">
             <vue-qr
               :text=u.twofaurl
@@ -262,8 +265,8 @@
           <input type="text" class="form-control el-square modal-el-margin" minlength="6" autocomplete="off" placeholder="Pin Code"  v-model="u.token">
         </div>
 
-        <div class="modal-body justify-content-center" v-if="secondfactor">
-          <h4>2FA already configured for user: <strong>{{ username }}</strong></h4>
+        <div class="modal-body justify-content-center" v-if="secondfactor == 'enabled' ">
+          <h4>2FA with TOTP already configured for user: <strong>{{ username }}</strong></h4>
         </div>
 
         <div class="modal-footer justify-content-center" v-if="u.modalActionMessage.length > 0">
@@ -273,8 +276,8 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-success el-square modal-el-margin" v-if="!secondfactor" v-on:click.stop="registerUser2faApp(username)">Register 2FA</button>
-          <button type="button" class="btn btn-danger el-square modal-el-margin" v-if="secondfactor" v-on:click.stop="resetUser2faApp(username)">Reset 2FA</button>
+          <button type="button" class="btn btn-success el-square modal-el-margin" v-if="secondfactor == 'disabled' " v-on:click.stop="registerUser2faApp(username)">Register 2FA TOTP</button>
+          <button type="button" class="btn btn-danger el-square modal-el-margin" v-if="secondfactor == 'enabled' " v-on:click.stop="resetUser2faApp(username)">Reset 2FA TOTP</button>
           <button type="button" class="btn btn-primary el-square d-flex justify-content-sm-end modal-el-margin" v-on:click.stop="u.modalActionMessage='';u.modalRegister2faVisible=false;u.token=''">Close</button>
         </div>
 

@@ -36,8 +36,7 @@ var (
 	clientConfigTemplatePath = kingpin.Flag("templates.clientconfig-path", "path to custom client.conf.tpl").Default("").Envar("OVPN_TEMPLATES_CC_PATH").String()
 	ccdTemplatePath          = kingpin.Flag("templates.ccd-path", "path to custom ccd.tpl").Default("").Envar("OVPN_TEMPLATES_CCD_PATH").String()
 
-	AuthByPassword = kingpin.Flag("auth.password", "enable additional password authentication").Default("false").Envar("OVPN_AUTH").Bool()
-	AuthTFA        = kingpin.Flag("auth.2fa", "auth type").Default("false").Envar("OVPN_AUTH_TFA").Bool()
+	AuthType	   = kingpin.Flag("auth.type", "auth type").Default("").Envar("OVPN_AUTH").HintOptions("TOTP", "PASSWORD", "").String()
 	AuthDatabase   = kingpin.Flag("auth.db", "database path for password authentication").Default("./easyrsa/pki/users.db").Envar("OVPN_AUTH_DB_PATH").String()
 
 	LogLevel  = kingpin.Flag("log.level", "set log level: trace, debug, info, warn, error (default info)").Default("info").Envar("LOG_LEVEL").String()

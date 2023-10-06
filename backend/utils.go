@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+	"database/sql"
 )
 
 var (
@@ -554,4 +555,21 @@ func randStr(strSize int, randType string) string {
 		bytes[k] = dictionary[v%byte(len(dictionary))]
 	}
 	return string(bytes)
+}
+
+func OpenDB(path string) *sql.DB {
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
+}
+
+func IsModuleEnabled(desiredModule string, listModules []string) bool {
+    for _, module := range listModules {
+        if module == desiredModule {
+            return true
+        }
+    }
+    return false
 }

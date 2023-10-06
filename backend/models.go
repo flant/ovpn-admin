@@ -24,6 +24,7 @@ type OvpnAdmin struct {
 	Modules                []string
 	mgmtStatusTimeFormat   string
 	CreateUserMutex        *sync.Mutex
+	ExtraAuth				bool
 }
 
 type OpenvpnServer struct {
@@ -48,7 +49,7 @@ type OpenvpnClient struct {
 	RevocationDate   string `json:"RevocationDate"`
 	ConnectionStatus string `json:"ConnectionStatus"`
 	Connections      int    `json:"Connections"`
-	SecondFactor     bool   `json:"SecondFactor"`
+	SecondFactor     string   `json:"SecondFactor,omitempty"`
 }
 
 type ccdRoute struct {
