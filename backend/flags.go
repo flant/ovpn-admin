@@ -3,9 +3,10 @@ package backend
 import "gopkg.in/alecthomas/kingpin.v2"
 
 var (
-	ListenHost = kingpin.Flag("listen.host", "host for ovpn-admin").Default("0.0.0.0").Envar("OVPN_LISTEN_HOST").String()
-	ListenPort = kingpin.Flag("listen.port", "port for ovpn-admin").Default("8080").Envar("OVPN_LISTEN_PORT").String()
-	ServerRole = kingpin.Flag("role", "server role, master or slave").Default("master").Envar("OVPN_ROLE").HintOptions("master", "slave").String()
+	ListenHost    = kingpin.Flag("listen.host", "host for ovpn-admin").Default("0.0.0.0").Envar("OVPN_LISTEN_HOST").String()
+	ListenPort 	  = kingpin.Flag("listen.port", "port for ovpn-admin").Default("8080").Envar("OVPN_LISTEN_PORT").String()
+	ListenBaseUrl = kingpin.Flag("listen.base-url", "base url for ovpn-admin").Default("/").Envar("OVPN_LISTEN_BASE_URL").String()
+	ServerRole    = kingpin.Flag("role", "server role, master or slave").Default("master").Envar("OVPN_ROLE").HintOptions("master", "slave").String()
 
 	//PersonalAccess       = kingpin.Flag("personalize", "personalize access for users").Default("false").Envar("OVPN_ADMIN_PERSONALIZE").Bool()
 	//AdminUserPassword    = kingpin.Flag("admin.password", "password fom admin user").Default("admin").Envar("OVPN_ADMIN_PASSWORD").String()
@@ -29,6 +30,7 @@ var (
 
 	EasyrsaDirPath = kingpin.Flag("easyrsa.path", "path to easyrsa dir").Default("./easyrsa").Envar("EASYRSA_PATH").String()
 	IndexTxtPath   = kingpin.Flag("easyrsa.index-path", "path to easyrsa index file").Default("").Envar("OVPN_INDEX_PATH").String()
+	EasyrsaBinPath = kingpin.Flag("easyrsa.bin-path", "path to easyrsa script").Default("easyrsa").Envar("EASYRSA_BIN_PATH").String()
 
 	CcdEnabled = kingpin.Flag("ccd", "enable client-config-dir").Default("false").Envar("OVPN_CCD").Bool()
 	CcdDir     = kingpin.Flag("ccd.path", "path to client-config-dir").Default("./ccd").Envar("OVPN_CCD_PATH").String()

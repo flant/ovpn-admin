@@ -126,41 +126,43 @@ func main() {
 
 	go ovpnAdmin.UpdateState()
 
-	http.Handle("/", static)
-	http.HandleFunc("/api/server/settings", ovpnAdmin.ServerSettingsHandler)
-	http.HandleFunc("/api/users/list", ovpnAdmin.UserListHandler)
-	http.HandleFunc("/api/user/create", ovpnAdmin.UserCreateHandler)
-	http.HandleFunc("/api/user/rotate", ovpnAdmin.UserRotateHandler)
-	http.HandleFunc("/api/user/delete", ovpnAdmin.UserDeleteHandler)
-	http.HandleFunc("/api/user/revoke", ovpnAdmin.UserRevokeHandler)
-	http.HandleFunc("/api/user/unrevoke", ovpnAdmin.UserUnrevokeHandler)
-	http.HandleFunc("/api/user/config/show", ovpnAdmin.UserShowConfigHandler)
+	listenBaseUrl := *backend.ListenBaseUrl
 
-	http.HandleFunc("/api/user/disconnect", ovpnAdmin.UserDisconnectHandler)
-	http.HandleFunc("/api/user/statistic", ovpnAdmin.UserStatisticHandler)
+	http.Handle(listenBaseUrl, http.StripPrefix(strings.TrimRight(listenBaseUrl, "/"), static))
+	http.HandleFunc(listenBaseUrl + "api/server/settings", ovpnAdmin.ServerSettingsHandler)
+	http.HandleFunc(listenBaseUrl + "api/users/list", ovpnAdmin.UserListHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/create", ovpnAdmin.UserCreateHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/rotate", ovpnAdmin.UserRotateHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/delete", ovpnAdmin.UserDeleteHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/revoke", ovpnAdmin.UserRevokeHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/unrevoke", ovpnAdmin.UserUnrevokeHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/config/show", ovpnAdmin.UserShowConfigHandler)
+
+	http.HandleFunc(listenBaseUrl + "api/user/disconnect", ovpnAdmin.UserDisconnectHandler)
+	http.HandleFunc(listenBaseUrl + "api/user/statistic", ovpnAdmin.UserStatisticHandler)
 
 	if *backend.CcdEnabled {
-		http.HandleFunc("/api/user/ccd", ovpnAdmin.UserShowCcdHandler)
-		http.HandleFunc("/api/user/ccd/apply", ovpnAdmin.UserApplyCcdHandler)
+		http.HandleFunc(listenBaseUrl + "api/user/ccd", ovpnAdmin.UserShowCcdHandler)
+		http.HandleFunc(listenBaseUrl + "api/user/ccd/apply", ovpnAdmin.UserApplyCcdHandler)
 	}
 
 	if ovpnAdmin.ExtraAuth {
-		http.HandleFunc("/api/user/change-password", ovpnAdmin.UserChangePasswordHandler)
-		http.HandleFunc("/api/auth/check", ovpnAdmin.AuthCheckHandler)
+		http.HandleFunc(listenBaseUrl + "api/user/change-password", ovpnAdmin.UserChangePasswordHandler)
+		http.HandleFunc(listenBaseUrl + "/api/auth/check", ovpnAdmin.AuthCheckHandler)
 		if *backend.AuthType == "TOTP" {
-			http.HandleFunc("/api/user/2fa/secret", ovpnAdmin.UserGetSecretHandler)
-			http.HandleFunc("/api/user/2fa/register", ovpnAdmin.UserSetupTFAHandler)
-			http.HandleFunc("/api/user/2fa/reset", ovpnAdmin.UserResetTFAHandler)
+			http.HandleFunc(listenBaseUrl + "/api/user/2fa/secret", ovpnAdmin.UserGetSecretHandler)
+			http.HandleFunc(listenBaseUrl + "/api/user/2fa/register", ovpnAdmin.UserSetupTFAHandler)
+			http.HandleFunc(listenBaseUrl + "/api/user/2fa/reset", ovpnAdmin.UserResetTFAHandler)
 		}
 	}
 
-	http.HandleFunc("/api/sync/last/try", ovpnAdmin.LastSyncTimeHandler)
-	http.HandleFunc("/api/sync/last/successful", ovpnAdmin.LastSuccessfulSyncTimeHandler)
-	http.HandleFunc(backend.DownloadCertsApiUrl, ovpnAdmin.DownloadCertsHandler)
-	http.HandleFunc(backend.DownloadCcdApiUrl, ovpnAdmin.DownloadCcdHandler)
+	http.HandleFunc(listenBaseUrl + "/api/sync/last/try", ovpnAdmin.LastSyncTimeHandler)
+	http.HandleFunc(listenBaseUrl + "/api/sync/last/successful", ovpnAdmin.LastSuccessfulSyncTimeHandler)
+	http.HandleFunc(listenBaseUrl + backend.DownloadCertsApiUrl, ovpnAdmin.DownloadCertsHandler)
+	http.HandleFunc(listenBaseUrl + backend.DownloadCcdApiUrl, ovpnAdmin.DownloadCcdHandler)
 
 	http.Handle(*backend.MetricsPath, promhttp.HandlerFor(ovpnAdmin.PromRegistry, promhttp.HandlerOpts{}))
-	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(listenBaseUrl + "/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
 	})
 

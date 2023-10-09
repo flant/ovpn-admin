@@ -378,7 +378,7 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 			}
 		}
 	} else {
-		o := runBash(fmt.Sprintf("cd %s && easyrsa build-client-full %s nopass 1>/dev/null", *EasyrsaDirPath, username))
+		o := runBash(fmt.Sprintf("cd %s && %s build-client-full %s nopass 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath, username))
 		log.Debug(o)
 		if oAdmin.ExtraAuth {
 			_, err := oAdmin.OUser.CreateUser(username, password)
@@ -637,7 +637,7 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 				log.Error(err)
 			}
 		} else {
-			o := runBash(fmt.Sprintf("cd %s && echo yes | easyrsa revoke %s 1>/dev/null && easyrsa gen-crl 1>/dev/null", *EasyrsaDirPath, username))
+			o := runBash(fmt.Sprintf("cd %[1]s && echo yes | %[2]s revoke %[3]s 1>/dev/null && %[2]s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath, username))
 			log.Debugln(o)
 		}
 
@@ -707,7 +707,7 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 							log.Error(err)
 						}
 
-						_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null", *EasyrsaDirPath))
+						_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath))
 
 						if oAdmin.ExtraAuth {
 							if oAdmin.OUser.CheckUserExistent(username) {
@@ -810,7 +810,7 @@ func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string
 				log.Error(err)
 			}
 
-			_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null", *EasyrsaDirPath))
+			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath))
 		}
 		crlFix()
 		oAdmin.clients = oAdmin.usersList()
@@ -850,7 +850,7 @@ func (oAdmin *OvpnAdmin) userDelete(username string) (error, string) {
 			if err != nil {
 				log.Error(err)
 			}
-			_ = runBash(fmt.Sprintf("cd %s && easyrsa gen-crl 1>/dev/null ", *EasyrsaDirPath))
+			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null ", *EasyrsaDirPath, *EasyrsaBinPath))
 		}
 		crlFix()
 		oAdmin.clients = oAdmin.usersList()
