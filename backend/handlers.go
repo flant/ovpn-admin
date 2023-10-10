@@ -17,7 +17,7 @@ func (oAdmin *OvpnAdmin) UserListHandler(w http.ResponseWriter, r *http.Request)
 		}
 		oAdmin.clients = oAdmin.usersList()
 	}
-	
+
 	usersList, _ := json.Marshal(oAdmin.clients)
 	fmt.Fprintf(w, "%s", usersList)
 }

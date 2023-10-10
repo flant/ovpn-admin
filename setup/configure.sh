@@ -43,6 +43,7 @@ cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
 if [ ${OVPN_AUTH} == "TOTP" ] || [ ${OVPN_AUTH} == "PASSWORD" ]; then
   mkdir -p /etc/openvpn/scripts/
+  echo OVPN_LISTEN_BASE_URL=${OVPN_LISTEN_BASE_URL} > /etc/openvpn/scripts/.env
   cp -f /etc/openvpn/setup/auth.sh /etc/openvpn/scripts/auth.sh
   chmod +x /etc/openvpn/scripts/auth.sh
   echo "auth-user-pass-verify /etc/openvpn/scripts/auth.sh via-file" | tee -a /etc/openvpn/openvpn.conf
