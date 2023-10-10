@@ -148,25 +148,25 @@ func main() {
 
 	if ovpnAdmin.ExtraAuth {
 		http.HandleFunc(listenBaseUrl + "api/user/change-password", ovpnAdmin.UserChangePasswordHandler)
-		http.HandleFunc(listenBaseUrl + "/api/auth/check", ovpnAdmin.AuthCheckHandler)
+		http.HandleFunc(listenBaseUrl + "api/auth/check", ovpnAdmin.AuthCheckHandler)
 		if *backend.AuthType == "TOTP" {
-			http.HandleFunc(listenBaseUrl + "/api/user/2fa/secret", ovpnAdmin.UserGetSecretHandler)
-			http.HandleFunc(listenBaseUrl + "/api/user/2fa/register", ovpnAdmin.UserSetupTFAHandler)
-			http.HandleFunc(listenBaseUrl + "/api/user/2fa/reset", ovpnAdmin.UserResetTFAHandler)
+			http.HandleFunc(listenBaseUrl + "api/user/2fa/secret", ovpnAdmin.UserGetSecretHandler)
+			http.HandleFunc(listenBaseUrl + "api/user/2fa/register", ovpnAdmin.UserSetupTFAHandler)
+			http.HandleFunc(listenBaseUrl + "api/user/2fa/reset", ovpnAdmin.UserResetTFAHandler)
 		}
 	}
 
-	http.HandleFunc(listenBaseUrl + "/api/sync/last/try", ovpnAdmin.LastSyncTimeHandler)
-	http.HandleFunc(listenBaseUrl + "/api/sync/last/successful", ovpnAdmin.LastSuccessfulSyncTimeHandler)
+	http.HandleFunc(listenBaseUrl + "api/sync/last/try", ovpnAdmin.LastSyncTimeHandler)
+	http.HandleFunc(listenBaseUrl + "api/sync/last/successful", ovpnAdmin.LastSuccessfulSyncTimeHandler)
 	http.HandleFunc(listenBaseUrl + backend.DownloadCertsApiUrl, ovpnAdmin.DownloadCertsHandler)
 	http.HandleFunc(listenBaseUrl + backend.DownloadCcdApiUrl, ovpnAdmin.DownloadCcdHandler)
 
 	http.Handle(*backend.MetricsPath, promhttp.HandlerFor(ovpnAdmin.PromRegistry, promhttp.HandlerOpts{}))
-	http.HandleFunc(listenBaseUrl + "/ping", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(listenBaseUrl + "ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "pong")
 	})
 
-	log.Printf("Bind: http://%s:%s", *backend.ListenHost, *backend.ListenPort)
+	log.Printf("Bind: http://%s:%s%s", *backend.ListenHost, *backend.ListenPort, listenBaseUrl)
 	log.Fatal(http.ListenAndServe(*backend.ListenHost+":"+*backend.ListenPort, nil))
 }
 
