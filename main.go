@@ -50,9 +50,16 @@ func main() {
 	ovpnAdmin := new(backend.OvpnAdmin)
 	ovpnAdmin.OUser = new(ou.OpenvpnUser)
 
+	ovpnAdmin.PKI = new(backend.OpenVPNPKI)
+	err := ovpnAdmin.PKI.InitPKI()
+	if err != nil {
+		log.Error(err)
+	}
+
 	if *backend.StorageBackend == "kubernetes.secrets" {
+		// TODO: Check
 		ovpnAdmin.KubeClient = new(backend.OpenVPNPKI)
-		err := ovpnAdmin.KubeClient.Run()
+		err := ovpnAdmin.KubeClient.KubeRun()
 		if err != nil {
 			log.Error(err)
 		}

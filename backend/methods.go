@@ -14,7 +14,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/google/uuid"
 	ou "github.com/pashcovich/openvpn-user/src"
 	log "github.com/sirupsen/logrus"
 )
@@ -280,7 +279,7 @@ func (oAdmin *OvpnAdmin) usersList() []OpenvpnClient {
 	apochNow := time.Now().Unix()
 
 	for _, line := range IndexTxtParser(fRead(*IndexTxtPath)) {
-		if line.Identity != "server" && !strings.Contains(line.Identity, "REVOKED") {
+		if line.Identity != "server" && line.Identity != "ca" && !strings.Contains(line.Identity, "REVOKED") {
 			totalCerts += 1
 			ovpnClient := OpenvpnClient{Identity: line.Identity, ExpirationDate: parseDateToString(indexTxtDateLayout, line.ExpirationDate, stringDateFormat)}
 			switch {
@@ -365,32 +364,27 @@ func (oAdmin *OvpnAdmin) userCreate(username, password string) (string, error) {
 		}
 	}
 
-	if *StorageBackend == "kubernetes.secrets" {
-		err := oAdmin.KubeClient.EasyrsaBuildClient(username)
-		if err != nil {
-			log.Error(err)
-			return err.Error(), err
-		}
-		if oAdmin.ExtraAuth {
+	err := oAdmin.PKI.BuildKeyPairClient(username)
+	if err != nil {
+		log.Error(err)
+		return err.Error(), err
+	}
+
+	if oAdmin.ExtraAuth {
+		switch *StorageBackend {
+		case "kubernetes.secrets":
 			err = oAdmin.KubeClient.updatePasswordSecret(username, []byte(password))
 			if err != nil {
 				return err.Error(), err
 			}
-		}
-	} else {
-		o := runBash(fmt.Sprintf("cd %s && %s build-client-full %s nopass 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath, username))
-		log.Debug(o)
-		if oAdmin.ExtraAuth {
+		case "filesystems":
 			_, err := oAdmin.OUser.CreateUser(username, password)
 			if err != nil {
 				return err.Error(), err
 			}
 		}
 	}
-
 	log.Infof("Certificate for user %s issued", username)
-
-	//oAdmin.clients = oAdmin.usersList()
 
 	return "", nil
 }
@@ -409,13 +403,13 @@ func (oAdmin *OvpnAdmin) userChangePassword(username, password string) (error, s
 			log.Warningf("userChangePassword: %s", err.Error())
 			return err, err.Error()
 		}
-
-		if *StorageBackend == "kubernetes.secrets" {
+		switch *StorageBackend {
+		case "kubernetes.secrets":
 			err := oAdmin.KubeClient.updatePasswordSecret(username, []byte(password))
 			if err != nil {
 				return err, err.Error()
 			}
-		} else {
+		case "filesystem":
 			msg, err := oAdmin.OUser.ChangeUserPassword(username, password)
 			if err != nil {
 				return err, msg
@@ -630,19 +624,13 @@ func (oAdmin *OvpnAdmin) getUserStatistic(username string) []ClientStatus {
 func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 	log.Infof("Revoke certificate for user %s", username)
 	if checkUserExist(username) {
-		// check certificate valid flag 'V'
-		if *StorageBackend == "kubernetes.secrets" {
-			err := oAdmin.KubeClient.EasyrsaRevoke(username)
-			if err != nil {
-				log.Error(err)
-			}
-		} else {
-			o := runBash(fmt.Sprintf("cd %[1]s && echo yes | %[2]s revoke %[3]s 1>/dev/null && %[2]s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath, username))
-			log.Debugln(o)
+		err := oAdmin.PKI.CertificateRevoke(username)
+		if err != nil {
+			log.Error(err)
 		}
 
-		if oAdmin.ExtraAuth {
-			if oAdmin.OUser.CheckUserExistent(username) {
+		if *StorageBackend == "filesystem" {
+			if oAdmin.ExtraAuth && oAdmin.OUser.CheckUserExistent(username) {
 				revokeMsg, revokeErr := oAdmin.OUser.RevokedUser(username)
 				log.Debug(revokeMsg)
 				log.Debug(revokeErr)
@@ -652,7 +640,6 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 			}
 		}
 
-		crlFix()
 		userConnected, userConnectedTo := isUserConnected(username, oAdmin.activeClients)
 		log.Tracef("User %s connected: %t", username, userConnected)
 		if userConnected {
@@ -671,67 +658,23 @@ func (oAdmin *OvpnAdmin) userRevoke(username string) (error, string) {
 
 func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 	if checkUserExist(username) {
-		if *StorageBackend == "kubernetes.secrets" {
-			err := oAdmin.KubeClient.EasyrsaUnrevoke(username)
-			if err != nil {
-				log.Error(err)
-			}
-		} else {
-			// check certificate revoked flag 'R'
-			usersFromIndexTxt := IndexTxtParser(fRead(*IndexTxtPath))
-			for i := range usersFromIndexTxt {
-				if usersFromIndexTxt[i].DistinguishedName == "/CN="+username {
-					if usersFromIndexTxt[i].Flag == "R" {
 
-						usersFromIndexTxt[i].Flag = "V"
-						usersFromIndexTxt[i].RevocationDate = ""
+		err := oAdmin.PKI.CertificateUnRevoke(username)
+		if err != nil {
+			log.Error(err)
+		}
 
-						err := fMove(fmt.Sprintf("%s/pki/revoked/certs_by_serial/%s.crt", *EasyrsaDirPath, usersFromIndexTxt[i].SerialNumber), fmt.Sprintf("%s/pki/issued/%s.crt", *EasyrsaDirPath, username))
-						if err != nil {
-							log.Error(err)
-						}
-						err = fMove(fmt.Sprintf("%s/pki/revoked/certs_by_serial/%s.crt", *EasyrsaDirPath, usersFromIndexTxt[i].SerialNumber), fmt.Sprintf("%s/pki/certs_by_serial/%s.pem", *EasyrsaDirPath, usersFromIndexTxt[i].SerialNumber))
-						if err != nil {
-							log.Error(err)
-						}
-						err = fMove(fmt.Sprintf("%s/pki/revoked/private_by_serial/%s.key", *EasyrsaDirPath, usersFromIndexTxt[i].SerialNumber), fmt.Sprintf("%s/pki/private/%s.key", *EasyrsaDirPath, username))
-						if err != nil {
-							log.Error(err)
-						}
-						err = fMove(fmt.Sprintf("%s/pki/revoked/reqs_by_serial/%s.req", *EasyrsaDirPath, usersFromIndexTxt[i].SerialNumber), fmt.Sprintf("%s/pki/reqs/%s.req", *EasyrsaDirPath, username))
-						if err != nil {
-							log.Error(err)
-						}
-						err = fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-						if err != nil {
-							log.Error(err)
-						}
-
-						_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath))
-
-						if oAdmin.ExtraAuth {
-							if oAdmin.OUser.CheckUserExistent(username) {
-								restoreMsg, restoreErr := oAdmin.OUser.RestoreUser(username)
-								log.Debug(restoreMsg)
-								log.Debug(restoreErr)
-								if restoreErr != nil {
-									return restoreErr, ""
-								}
-							}
-						}
-
-						crlFix()
-
-						break
-					}
+		if *StorageBackend == "filesystem" {
+			if oAdmin.ExtraAuth && oAdmin.OUser.CheckUserExistent(username) {
+				restoreMsg, restoreErr := oAdmin.OUser.RestoreUser(username)
+				log.Debug(restoreMsg)
+				log.Debug(restoreErr)
+				if restoreErr != nil {
+					return restoreErr, ""
 				}
 			}
-			err := fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-			if err != nil {
-				log.Error(err)
-			}
 		}
-		crlFix()
+
 		oAdmin.clients = oAdmin.usersList()
 		return nil, fmt.Sprintf("{\"msg\":\"User %s successfully unrevoked\"}", username)
 	}
@@ -740,119 +683,46 @@ func (oAdmin *OvpnAdmin) userUnrevoke(username string) (error, string) {
 
 func (oAdmin *OvpnAdmin) userRotate(username, newPassword string) (error, string) {
 	if checkUserExist(username) {
-		if *StorageBackend == "kubernetes.secrets" {
-			err := oAdmin.KubeClient.EasyrsaRotate(username)
-			if err != nil {
-				log.Error(err)
-			}
-		} else {
-
-			var oldUserIndex, newUserIndex int
-			var oldUserSerial string
-
-			uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
-
-			usersFromIndexTxt := IndexTxtParser(fRead(*IndexTxtPath))
-			for i := range usersFromIndexTxt {
-				if usersFromIndexTxt[i].DistinguishedName == "/CN="+username {
-					oldUserSerial = usersFromIndexTxt[i].SerialNumber
-					usersFromIndexTxt[i].DistinguishedName = "/CN=REVOKED-" + username + "-" + uniqHash
-					oldUserIndex = i
-					break
-				}
-			}
-			err := fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-			if err != nil {
-				log.Error(err)
-			}
-
-			if oAdmin.ExtraAuth {
-				if oAdmin.OUser.CheckUserExistent(username) {
-					deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
-					log.Debug(deleteMsg)
-					log.Debug(deleteErr)
-					if deleteErr != nil {
-						return deleteErr, ""
-					}
-					log.Debug(deleteMsg)
-				}
-			}
-
-			userCreateMessage, userCreateError := oAdmin.userCreate(username, newPassword)
-			if userCreateError != nil {
-				usersFromIndexTxt = IndexTxtParser(fRead(*IndexTxtPath))
-				for i := range usersFromIndexTxt {
-					if usersFromIndexTxt[i].SerialNumber == oldUserSerial {
-						usersFromIndexTxt[i].DistinguishedName = "/CN=" + username
-						break
-					}
-				}
-				err = fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-				if err != nil {
-					log.Error(err)
-				}
-				return fmt.Errorf("error rotaing user due:  %s", userCreateMessage), userCreateMessage
-			}
-
-			usersFromIndexTxt = IndexTxtParser(fRead(*IndexTxtPath))
-			for i := range usersFromIndexTxt {
-				if usersFromIndexTxt[i].DistinguishedName == "/CN="+username {
-					newUserIndex = i
-				}
-				if usersFromIndexTxt[i].SerialNumber == oldUserSerial {
-					oldUserIndex = i
-				}
-			}
-			usersFromIndexTxt[oldUserIndex], usersFromIndexTxt[newUserIndex] = usersFromIndexTxt[newUserIndex], usersFromIndexTxt[oldUserIndex]
-
-			err = fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-			if err != nil {
-				log.Error(err)
-			}
-
-			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null", *EasyrsaDirPath, *EasyrsaBinPath))
+		err := oAdmin.PKI.CertificateRotate(username)
+		if err != nil {
+			log.Error(err)
 		}
-		crlFix()
+
+		if *StorageBackend == "filesystem" {
+			if oAdmin.ExtraAuth && oAdmin.OUser.CheckUserExistent(username) {
+				deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
+				log.Debug(deleteMsg)
+				log.Debug(deleteErr)
+				if deleteErr != nil {
+					return deleteErr, ""
+				}
+				log.Debug(deleteMsg)
+			}
+		}
 		oAdmin.clients = oAdmin.usersList()
 		return nil, fmt.Sprintf("{\"msg\":\"User %s successfully rotated\"}", username)
 	}
 	return fmt.Errorf("user \"%s\" not found", username), fmt.Sprintf("{\"msg\":\"User \"%s\" not found\"}", username)
-}
+	} 
 
 func (oAdmin *OvpnAdmin) userDelete(username string) (error, string) {
 	if checkUserExist(username) {
-		if *StorageBackend == "kubernetes.secrets" {
-			err := oAdmin.KubeClient.EasyrsaDelete(username)
-			if err != nil {
-				log.Error(err)
-			}
-		} else {
-			uniqHash := strings.Replace(uuid.New().String(), "-", "", -1)
-			usersFromIndexTxt := IndexTxtParser(fRead(*IndexTxtPath))
-			for i := range usersFromIndexTxt {
-				if usersFromIndexTxt[i].DistinguishedName == "/CN="+username {
-					usersFromIndexTxt[i].DistinguishedName = "/CN=REVOKED-" + username + "-" + uniqHash
-					break
-				}
-			}
-			if oAdmin.ExtraAuth {
-				if oAdmin.OUser.CheckUserExistent(username) {
-					deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
-					log.Debug(deleteMsg)
-					log.Debug(deleteErr)
-					if deleteErr != nil {
-						log.Debug(deleteErr)
-						return deleteErr, ""
-					}
-				}
-			}
-			err := fWrite(*IndexTxtPath, renderIndexTxt(usersFromIndexTxt))
-			if err != nil {
-				log.Error(err)
-			}
-			_ = runBash(fmt.Sprintf("cd %s && %s gen-crl 1>/dev/null ", *EasyrsaDirPath, *EasyrsaBinPath))
+		err := oAdmin.PKI.CertificateDelAfterRevoke(username)
+		if err != nil {
+			log.Error(err)
 		}
-		crlFix()
+
+		if *StorageBackend == "filesystem" {
+			if oAdmin.ExtraAuth && oAdmin.OUser.CheckUserExistent(username) {
+				deleteMsg, deleteErr := oAdmin.OUser.DeleteUser(username, true)
+				log.Debug(deleteMsg)
+				log.Debug(deleteErr)
+				if deleteErr != nil {
+					return deleteErr, ""
+				}
+				log.Debug(deleteMsg)
+			}
+		}
 		oAdmin.clients = oAdmin.usersList()
 		return nil, fmt.Sprintf("{\"msg\":\"User %s successfully deleted\"}", username)
 	}
