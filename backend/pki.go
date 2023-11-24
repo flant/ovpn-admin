@@ -8,6 +8,7 @@ import (
     "fmt"
     "os"
     "os/exec"
+    "sort"
     "time"
 
     "github.com/google/uuid"
@@ -175,7 +176,6 @@ func (openVPNPKI *OpenVPNPKI) getExistCert(name string) (data ClientCert, err er
 func (openVPNPKI *OpenVPNPKI) BuildKeyPairClient(commonName string) (err error) {
 
     switch *StorageBackend {
-
     case "kubernetes.secrets":
         // check certificate exists
         _, err = openVPNPKI.secretGetByLabels("name=" + commonName)
@@ -215,7 +215,6 @@ func (openVPNPKI *OpenVPNPKI) BuildKeyPairClient(commonName string) (err error) 
         if err != nil {
             return
         }
-
     case "filesystem":
         
         if checkUserExist(commonName) {
@@ -459,10 +458,17 @@ func (openVPNPKI *OpenVPNPKI) indexTxtUpdate() (err error) {
             }
           }
         }
+
         var body []string
-        for _, line := range indexTxtFromFile{
-            body = append(body, fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", line.Flag, line.ExpirationDate, line.RevocationDate, line.SerialNumber, line.Filename, line.DistinguishedName))
+        keys := make([]string, 0)
+        for k, _ := range indexTxtFromFile {
+            keys = append(keys, k)
         }
+        sort.Strings(keys)
+        for _, k := range keys {
+          body = append(body, fmt.Sprintf("%s\t%s\t%s\t%s\t%s\t%s\n", indexTxtFromFile[k].Flag, indexTxtFromFile[k].ExpirationDate, indexTxtFromFile[k].RevocationDate, indexTxtFromFile[k].SerialNumber, indexTxtFromFile[k].Filename, indexTxtFromFile[k].DistinguishedName))
+        }
+
         err = fWrite(*EasyrsaDirPath+"/pki/index.txt", strings.Join(body, ""))
         if err != nil {
             return err
