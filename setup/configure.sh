@@ -19,6 +19,7 @@ else
     do
       sleep 5
     done
+  fi
 fi
 
 iptables -t nat -D POSTROUTING -s ${OVPN_SRV_NET}/${OVPN_SRV_MASK} ! -d ${OVPN_SRV_NET}/${OVPN_SRV_MASK} -j MASQUERADE || true
