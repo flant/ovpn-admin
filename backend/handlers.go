@@ -17,7 +17,7 @@ func (oAdmin *OvpnAdmin) UserListHandler(w http.ResponseWriter, r *http.Request)
 		}
 		oAdmin.clients = oAdmin.usersList()
 	}
-	
+
 	usersList, _ := json.Marshal(oAdmin.clients)
 	fmt.Fprintf(w, "%s", usersList)
 }
@@ -74,7 +74,7 @@ func (oAdmin *OvpnAdmin) UserResetTFAHandler(w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "2FA reseted")
+		fmt.Fprintf(w, "TOTP reseted")
 	}
 }
 
@@ -150,7 +150,7 @@ func (oAdmin *OvpnAdmin) UserUnrevokeHandler(w http.ResponseWriter, r *http.Requ
 func (oAdmin *OvpnAdmin) UserChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info(r.RemoteAddr, " ", r.RequestURI)
 	_ = r.ParseForm()
-	if *AuthByPassword {
+	if oAdmin.ExtraAuth {
 		err, msg := oAdmin.userChangePassword(r.FormValue("username"), r.FormValue("password"))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

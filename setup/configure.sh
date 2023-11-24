@@ -19,17 +19,8 @@ else
     do
       sleep 5
     done
-  else
-    echo "Generating new certs"
-    easyrsa init-pki
-    cp -R /usr/share/easy-rsa/* $EASY_RSA_LOC/pki
-    echo "ca" | easyrsa build-ca nopass
-    easyrsa build-server-full server nopass
-    easyrsa gen-dh
-    openvpn --genkey --secret ./pki/ta.key
   fi
 fi
-easyrsa gen-crl
 
 iptables -t nat -D POSTROUTING -s ${OVPN_SRV_NET}/${OVPN_SRV_MASK} ! -d ${OVPN_SRV_NET}/${OVPN_SRV_MASK} -j MASQUERADE || true
 iptables -t nat -A POSTROUTING -s ${OVPN_SRV_NET}/${OVPN_SRV_MASK} ! -d ${OVPN_SRV_NET}/${OVPN_SRV_MASK} -j MASQUERADE
@@ -41,8 +32,9 @@ fi
 
 cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
 
-if [ ${OVPN_PASSWD_AUTH} = "true" ]; then
+if [ ${OVPN_AUTH} == "TOTP" ] || [ ${OVPN_AUTH} == "PASSWORD" ]; then
   mkdir -p /etc/openvpn/scripts/
+  echo OVPN_LISTEN_BASE_URL=${OVPN_LISTEN_BASE_URL} > /etc/openvpn/scripts/.env
   cp -f /etc/openvpn/setup/auth.sh /etc/openvpn/scripts/auth.sh
   chmod +x /etc/openvpn/scripts/auth.sh
   echo "auth-user-pass-verify /etc/openvpn/scripts/auth.sh via-file" | tee -a /etc/openvpn/openvpn.conf

@@ -3,7 +3,12 @@ package backend
 import (
 	"io/fs"
 	"sync"
-
+	"bytes"
+	"time"
+	"crypto/rsa"
+	"crypto/x509"
+	
+	"k8s.io/client-go/kubernetes"
 	"github.com/pashcovich/openvpn-user/src"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -19,11 +24,13 @@ type OvpnAdmin struct {
 	PromRegistry           *prometheus.Registry
 	OUser                  *src.OpenvpnUser
 	KubeClient             *OpenVPNPKI
+	PKI                     *OpenVPNPKI
 	MgmtInterfaces         map[string]string
 	Templates              fs.FS
 	Modules                []string
 	mgmtStatusTimeFormat   string
 	CreateUserMutex        *sync.Mutex
+	ExtraAuth              bool
 }
 
 type OpenvpnServer struct {
@@ -48,7 +55,7 @@ type OpenvpnClient struct {
 	RevocationDate   string `json:"RevocationDate"`
 	ConnectionStatus string `json:"ConnectionStatus"`
 	Connections      int    `json:"Connections"`
-	SecondFactor     bool   `json:"SecondFactor"`
+	SecondFactor     string   `json:"SecondFactor,omitempty"`
 }
 
 type ccdRoute struct {
@@ -84,4 +91,33 @@ type ClientStatus struct {
 	ConnectedSinceFormatted string
 	LastRefFormatted        string
 	ConnectedTo             string
+}
+
+type OpenVPNPKI struct {
+	CAPrivKeyRSA     *rsa.PrivateKey
+	CAPrivKeyPEM     *bytes.Buffer
+	CACert           *x509.Certificate
+	CACertPEM        *bytes.Buffer
+	ServerPrivKeyRSA *rsa.PrivateKey
+	ServerPrivKeyPEM *bytes.Buffer
+	ServerCert       *x509.Certificate
+	ServerCertPEM    *bytes.Buffer
+	TaKey       *bytes.Buffer
+	DhParam          *bytes.Buffer
+	ClientCerts      []ClientCert
+	RevokedCerts     []RevokedCert
+	KubeClient       *kubernetes.Clientset
+}
+
+type ClientCert struct {
+	PrivKeyRSA *rsa.PrivateKey
+	PrivKeyPEM *bytes.Buffer
+	Cert       *x509.Certificate
+	CertPEM    *bytes.Buffer
+}
+
+type RevokedCert struct {
+	RevokedTime time.Time         `json:"revokedTime"`
+	CommonName  string            `json:"commonName"`
+	Cert        *x509.Certificate `json:"cert"`
 }

@@ -5,12 +5,13 @@ import (
 	"compress/gzip"
 	"context"
 	"crypto/x509"
+	"database/sql"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -208,7 +209,7 @@ func getOvpnServerHostsFromKubeApi() ([]OpenvpnServer, error) {
 
 func getOvpnCaCertExpireDate() time.Time {
 	caCertPath := *EasyrsaDirPath + "/pki/ca.crt"
-	caCert, err := ioutil.ReadFile(caCertPath)
+	caCert, err := os.ReadFile(caCertPath)
 	if err != nil {
 		log.Errorf("error read file %s: %s", caCertPath, err.Error())
 	}
@@ -277,13 +278,27 @@ func fExist(path string) bool {
 }
 
 func fRead(path string) string {
-	content, err := ioutil.ReadFile(path)
+	content := fReadRaw(path)
+	return string(content)
+}
+
+func fReadRaw(path string) []byte {
+	content, err := os.ReadFile(path)
 	if err != nil {
 		log.Warning(err)
-		return ""
+		return nil
 	}
 
-	return string(content)
+	return content
+}
+
+func fReadDir(path string) []fs.DirEntry {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		log.Warning(err)
+	}
+
+	return files
 }
 
 func fCreate(path string) error {
@@ -300,7 +315,15 @@ func fCreate(path string) error {
 }
 
 func fWrite(path, content string) error {
-	err := ioutil.WriteFile(path, []byte(content), 0644)
+	err := fWriteRaw(path, []byte(content), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return nil
+}
+
+func fWriteRaw(path string, rawContent []byte, perm fs.FileMode) error {
+	err := os.WriteFile(path, []byte(rawContent), perm)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -394,7 +417,7 @@ func fDownload(path, url string, basicAuth bool) error {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -554,4 +577,35 @@ func randStr(strSize int, randType string) string {
 		bytes[k] = dictionary[v%byte(len(dictionary))]
 	}
 	return string(bytes)
+}
+
+func OpenDB(path string) *sql.DB {
+	db, err := sql.Open("sqlite3", path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
+}
+
+func IsModuleEnabled(desiredModule string, listModules []string) bool {
+    for _, module := range listModules {
+        if module == desiredModule {
+            return true
+        }
+    }
+    return false
+}
+
+func GetSerialNumberByUser(username string) string {
+	var serialNumberInTxt string 
+	usersFromIndexTxt := IndexTxtParser(fRead(*IndexTxtPath))
+	for i := range usersFromIndexTxt {
+		if usersFromIndexTxt[i].DistinguishedName == "/CN="+username {
+			if usersFromIndexTxt[i].Flag == "R" {
+				serialNumberInTxt = usersFromIndexTxt[i].SerialNumber
+				break
+			}
+		}
+	}
+	return serialNumberInTxt
 }

@@ -160,6 +160,7 @@ new Vue({
         label: 'Download config',
         class: 'btn-info',
         showWhenStatus: 'Active',
+        Require2FA: "true",
         showForServerRole: ['master', 'slave'],
         showForModule: ["core"],
       },
@@ -353,7 +354,7 @@ new Vue({
 
     getUserTFAData: function(data) {
       let _this = this;
-      if (!_this.secondfactor) {
+      if (_this.secondfactor == 'disabled' ) {
         axios.request(axios_cfg('api/user/2fa/secret', data, 'form'))
           .then(function (response) {
             _this.u.secret = response.data;
@@ -374,15 +375,15 @@ new Vue({
           _this.u.modalActionStatus = 200;
           _this.u.modalRegister2faVisible = false;
           _this.getUserData();
-          _this.secondfactor = true;
+          _this.secondfactor = "enabled";
           _this.u.token = "";
           _this.u.secret = "";
-          _this.$notify({title: '2FA application registered  for user ' + username, type: 'success'});
+          _this.$notify({title: 'TOTP application registered  for user ' + username, type: 'success'});
         })
         .catch(function(error) {
           _this.u.modalActionStatus = error.response.status;
           _this.u.modalActionMessage = error.response.data.message;
-          _this.$notify({title: 'Register 2FA application for user ' + username + ' failed!', type: 'error'});
+          _this.$notify({title: 'Register TOTP application for user ' + username + ' failed!', type: 'error'});
         })
     },
 
@@ -396,15 +397,15 @@ new Vue({
       axios.request(axios_cfg('api/user/2fa/reset', data, 'form'))
         .then(function(response) {
           _this.u.modalActionStatus = 200;
-          _this.secondfactor = false;
+          _this.secondfactor = "disabled";
           _this.getUserTFAData(data);
           _this.getUserData();
-          _this.$notify({title: '2FA application reset for user ' + username, type: 'success'});
+          _this.$notify({title: 'TOTP application reset for user ' + username, type: 'success'});
         })
         .catch(function(error) {
           _this.u.modalActionStatus = error.response.status;
           _this.u.modalActionMessage = error.response.data.message;
-          _this.$notify({title: 'Reset 2FA application for user ' + username + ' failed!', type: 'error'});
+          _this.$notify({title: 'Reset TOTP application for user ' + username + ' failed!', type: 'error'});
         })
     },
 

@@ -9,7 +9,8 @@ services:
     environment:
       OVPN_SERVER_NET: ${OVPN_SERVER_NET}
       OVPN_SERVER_MASK: ${OVPN_SERVER_MASK}
-      OVPN_PASSWD_AUTH: ${OVPN_PASSWD_AUTH}
+      OVPN_LISTEN_BASE_URL: ${OVPN_LISTEN_BASE_URL}
+      OVPN_AUTH: ${OVPN_AUTH}
     cap_add:
       - NET_ADMIN
     ports:
@@ -26,12 +27,12 @@ services:
     environment:
       OVPN_NETWORK: ${OVPN_NETWORK}
       OVPN_CCD: ${OVPN_CCD}
-      OVPN_CCD_PATH: ${OVPN_CCD_PATH
+      OVPN_CCD_PATH: ${OVPN_CCD_PATH}
       EASYRSA_PATH: ${EASYRSA_PATH}
       OVPN_SERVER: ${OVPN_SERVER}
       OVPN_INDEX_PATH: ${OVPN_INDEX_PATH}
+      OVPN_LISTEN_BASE_URL: ${OVPN_LISTEN_BASE_URL}
       OVPN_AUTH: ${OVPN_AUTH}
-      OVPN_AUTH_TFA: ${OVPN_AUTH_TFA}
       OVPN_AUTH_DB_PATH: ${OVPN_AUTH_DB_PATH}
       LOG_LEVEL: ${LOG_LEVEL}
     network_mode: service:openvpn
