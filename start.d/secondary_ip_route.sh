@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 set -ex
 
-default_iface=$(ip route | grep default | awk '{print $5}')
+default_iface=$(ip route | grep default | head -n 1 | awk '{print $5}')
 iptables -t nat -I POSTROUTING -s "$OVPN_NET_SUBNET" -o "$default_iface" -j SNAT --to-source "$OVPN_PUBLIC_IP"
