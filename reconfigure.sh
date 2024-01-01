@@ -5,7 +5,8 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+set -a
 source .env
-
+set +a
 
 envsubst < ./nginx/default.conf.tpl > ./nginx/default.conf

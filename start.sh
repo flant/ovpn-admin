@@ -5,7 +5,9 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+set -a
 source .env
+set +a
 
 for script_file in ./start.d/*.sh
 do
