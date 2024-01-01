@@ -20,3 +20,4 @@ packrd/
 *.njsproj
 *.sln
 .env
+nginx/default.conf

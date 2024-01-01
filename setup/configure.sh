@@ -39,7 +39,13 @@ if [ ! -c /dev/net/tun ]; then
     mknod /dev/net/tun c 10 200
 fi
 
-cp -f /etc/openvpn/setup/openvpn.conf /etc/openvpn/openvpn.conf
+if [ -f "/etc/openvpn/config/openvpn.conf" ]; then
+  target_config="/etc/openvpn/config/openvpn.conf"
+else
+  target_config="/etc/openvpn/setup/openvpn.conf"
+fi
+
+cp -f "$target_config" /etc/openvpn/openvpn.conf
 
 if [ ${OVPN_PASSWD_AUTH} = "true" ]; then
   mkdir -p /etc/openvpn/scripts/
@@ -56,4 +62,4 @@ fi
 
 mkdir -p /etc/openvpn/ccd
 
-openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd --port 1194 --proto tcp --management 127.0.0.1 8989 --dev tun0 --server ${OVPN_SRV_NET} ${OVPN_SRV_MASK}
+openvpn --config /etc/openvpn/openvpn.conf --client-config-dir /etc/openvpn/ccd --server ${OVPN_SRV_NET} ${OVPN_SRV_MASK}

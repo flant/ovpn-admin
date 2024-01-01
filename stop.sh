@@ -7,10 +7,10 @@ fi
 
 source .env
 
+docker compose -p "$OVPN_COMPOSE_NAME" down "$@"
+
 for script_file in ./start.d/*.sh
 do
    echo "Sourcing ${script_file}"
    source "${script_file}"
 done
-
-docker compose -p "$OVPN_COMPOSE_NAME" up -d --force-recreate --always-recreate-deps "$@"

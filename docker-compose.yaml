@@ -8,17 +8,20 @@ services:
     image: openvpn:local
     command: /etc/openvpn/setup/configure.sh
     environment:
-      OVPN_SERVER_NET: "192.168.100.0"
-      OVPN_SERVER_MASK: "255.255.255.0"
-      OVPN_PASSWD_AUTH: "true"
+      OVPN_SERVER_NET: ${OVPN_SERVER_NET}
+      OVPN_SERVER_MASK: ${OVPN_SERVER_MASK}
+      OVPN_PASSWD_AUTH: "false"
     cap_add:
       - NET_ADMIN
     ports:
-      - 7777:1194 # for openvpn
-      - 8080:8080 # for ovpn-admin because of network_mode
+      - ${OVPN_PORT}:1194/${OVPN_PROTOCOL}
     volumes:
       - ./easyrsa_master:/etc/openvpn/easyrsa
       - ./ccd_master:/etc/openvpn/ccd
+      - ./ovpn_config:/etc/openvpn/config
+    networks:
+      ovpn-net:
+        ipv4_address: ${OVPN_SERVER_IP}
   ovpn-admin:
     build:
       context: .
@@ -27,16 +30,35 @@ services:
     environment:
       OVPN_DEBUG: "true"
       OVPN_VERBOSE: "true"
-      OVPN_NETWORK: "192.168.100.0/24"
+      OVPN_NETWORK: ${OVPN_ADMIN_OVPN_NETWORK}
       OVPN_CCD: "true"
       OVPN_CCD_PATH: "/mnt/ccd"
       EASYRSA_PATH: "/mnt/easyrsa"
-      OVPN_SERVER: "127.0.0.1:7777:tcp"
+      OVPN_SERVER: ${OVPN_PUBLIC_IP}:${OVPN_PORT}:${OVPN_PROTOCOL}
       OVPN_INDEX_PATH: "/mnt/easyrsa/pki/index.txt"
-      OVPN_AUTH: "true"
+      OVPN_AUTH: "false"
       OVPN_AUTH_DB_PATH: "/mnt/easyrsa/pki/users.db"
-      LOG_LEVEL: "debug"
-    network_mode: service:openvpn
+      LOG_LEVEL: "warn"
+    networks:
+      ovpn-net:
+        ipv4_address: ${OVPN_ADMIN_IP}
     volumes:
       - ./easyrsa_master:/mnt/easyrsa
       - ./ccd_master:/mnt/ccd
+  ovpn-nginx:
+    image: nginx:latest
+    container_name: nginx
+    networks:
+      ovpn-net:
+        ipv4_address: ${OVPN_NGINX_IP}
+    ports:
+      - ${OVPN_NGINX_PORT}:8088
+    volumes:
+      - ./nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+networks:
+  ovpn-net:
+    ipam:
+      driver: default
+      config:
+        - subnet: ${OVPN_NET_SUBNET}
