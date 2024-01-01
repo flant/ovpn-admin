@@ -11,3 +11,4 @@ source .env
 set +a
 
 envsubst < ./nginx/default.conf.tpl > ./nginx/default.conf
+envsubst < ./ovpn_config/openvpn.conf.tpl > ./ovpn_config/openvpn.conf
