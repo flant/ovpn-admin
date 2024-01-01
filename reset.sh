@@ -2,4 +2,5 @@
 set -eo pipefail
 
 ./stop.sh "$@"
+./reconfigure.sh
 ./start.sh "$@"
