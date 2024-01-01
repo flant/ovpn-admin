@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -exo pipefail
 
 if [ ! -f .env ]; then
     echo "Please create a .env file"
@@ -9,7 +10,7 @@ set -a
 source .env
 set +a
 
-docker compose -p "$OVPN_COMPOSE_NAME" down "$@"
+docker-compose -p "$OVPN_COMPOSE_NAME" down "$@"
 
 for script_file in ./start.d/*.sh
 do
