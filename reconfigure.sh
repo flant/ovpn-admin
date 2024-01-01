@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -exo pipefail
+set -eo pipefail
 
 if [ ! -f .env ]; then
     echo "Please create a .env file"
