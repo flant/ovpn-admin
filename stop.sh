@@ -12,7 +12,7 @@ set +a
 
 docker-compose -p "$OVPN_COMPOSE_NAME" down "$@"
 
-for script_file in ./start.d/*.sh
+for script_file in ./stop.d/*.sh
 do
    echo "Sourcing ${script_file}"
    source "${script_file}"
