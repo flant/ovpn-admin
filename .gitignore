@@ -19,3 +19,4 @@ packrd/
 *.ntvs*
 *.njsproj
 *.sln
+!/.env
