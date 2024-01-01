@@ -26,4 +26,4 @@ push "dhcp-option DNS ${OVPN_DNS_SERVER_IP}"
 push "tun-mtu ${OPVN_VPN_MTU}"
 tun-mtu ${OPVN_VPN_MTU}
 push "redirect-gateway def1"
-push "route ${OVPN_VPN_IGNORE_ROUTE_IP} ${OVPN_VPN_IGNORE_ROUTE_MASK} net_gateway"
+# push "route ${OVPN_VPN_IGNORE_ROUTE_IP} ${OVPN_VPN_IGNORE_ROUTE_MASK} net_gateway"
