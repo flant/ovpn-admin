@@ -21,7 +21,6 @@ status /tmp/openvpn-status.log
 user nobody
 group nogroup
 push "topology subnet"
-push "route-metric 9999"
 push "tun-mtu ${OPVN_VPN_MTU}"
 tun-mtu ${OPVN_VPN_MTU}
 push "redirect-gateway def1"
