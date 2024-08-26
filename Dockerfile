@@ -9,7 +9,7 @@ COPY . /app
 ARG TARGETARCH
 RUN cd /app && packr2 && env CGO_ENABLED=1 GOOS=linux GOARCH=${TARGETARCH} go build -a -tags netgo -ldflags '-linkmode external -extldflags -static -s -w' -o ovpn-admin && packr2 clean
 
-FROM alpine:3.16
+FROM alpine:3.20@sha256:0a4eaa0eecf5f8c050e5bba433f58c052be7587ee8af3e8b3910ef9ab5fbe9f5
 WORKDIR /app
 COPY --from=backend-builder /app/ovpn-admin /app
 ARG TARGETARCH
