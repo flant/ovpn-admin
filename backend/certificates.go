@@ -60,7 +60,6 @@ func genPrivKey() (privKeyPEM *bytes.Buffer, err error) {
 		Bytes: privKeyPKCS8,
 	})
 
-
 	return
 }
 

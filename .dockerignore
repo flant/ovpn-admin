@@ -11,7 +11,6 @@ easyrsa_slave
 ccd
 ccd_master
 ccd_slave
-werf.yaml
 frontend/node_modules
 frontend/static/dist
 openvpn-web-ui
@@ -20,7 +19,4 @@ openvpn-admin
 ovpn-admin
 
 docker-compose.yaml
-docker-compose-slave.yaml
 img
-dashboard
-.helm

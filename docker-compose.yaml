@@ -1,42 +1,58 @@
-version: '3'
-
 services:
   openvpn:
     build:
       context: .
       dockerfile: Dockerfile.openvpn
     image: openvpn:local
+    privileged: true
     command: /etc/openvpn/setup/configure.sh
     environment:
-      OVPN_SERVER_NET: "192.168.100.0"
+      OVPN_SERVER_NET: "10.8.0.0"
       OVPN_SERVER_MASK: "255.255.255.0"
-      OVPN_PASSWD_AUTH: "true"
+      OVPN_SERVER_PORT: "YOUR_OPENVPN_SERVER_PORT"
+      OVPN_PASSWD_AUTH: "false"
     cap_add:
       - NET_ADMIN
     ports:
-      - 7777:1194 # for openvpn
-      - 8080:8080 # for ovpn-admin because of network_mode
+      - "YOUR_OPENVPN_SERVER_PORT:YOUR_OPENVPN_SERVER_PORT"
     volumes:
       - ./easyrsa_master:/etc/openvpn/easyrsa
       - ./ccd_master:/etc/openvpn/ccd
+
   ovpn-admin:
     build:
       context: .
+      dockerfile: Dockerfile.ovpn-admin
     image: ovpn-admin:local
     command: /app/ovpn-admin
+    privileged: true
     environment:
-      OVPN_DEBUG: "true"
+      OVPN_DEBUG: "false"
       OVPN_VERBOSE: "true"
-      OVPN_NETWORK: "192.168.100.0/24"
+      OVPN_NETWORK: "10.8.0.0/24"
       OVPN_CCD: "true"
       OVPN_CCD_PATH: "/mnt/ccd"
       EASYRSA_PATH: "/mnt/easyrsa"
-      OVPN_SERVER: "127.0.0.1:7777:tcp"
+      OVPN_SERVER: "YOUR_OPENVPN_SERVER_IP:YOUR_OPENVPN_SERVER_PORT:tcp"
       OVPN_INDEX_PATH: "/mnt/easyrsa/pki/index.txt"
-      OVPN_AUTH: "true"
+      OVPN_AUTH: "false"
       OVPN_AUTH_DB_PATH: "/mnt/easyrsa/pki/users.db"
       LOG_LEVEL: "debug"
     network_mode: service:openvpn
     volumes:
       - ./easyrsa_master:/mnt/easyrsa
       - ./ccd_master:/mnt/ccd
+    depends_on:
+      - openvpn
+
+  nginx-auth:
+    image: beevelop/nginx-basic-auth
+    environment:
+      HTPASSWD: "YOUR_OVPN_ADMIN_USER:YOUR_OVPN_ADMIN_PASSWORD_HASH"
+      PORT: "YOUR_OVPN_ADMIN_PORT"
+      FORWARD_HOST: "openvpn"
+      FORWARD_PORT: "8080"
+    profiles:
+      - auth
+    depends_on:
+      - ovpn-admin

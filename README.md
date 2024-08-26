@@ -32,6 +32,14 @@ An example of dashboard made using ovpn-admin metrics:
 
 There is a ready-to-use [docker-compose.yaml](https://github.com/flant/ovpn-admin/blob/master/docker-compose.yaml), so you can just change/add values you need and start it with [start.sh](https://github.com/flant/ovpn-admin/blob/master/start.sh).
 
+Please find and replace all following variables in docker-compose.yaml:
+
+* `YOUR_OPENVPN_SERVER_IP`: Public IP address of your OpenVPN server
+* `YOUR_OPENVPN_SERVER_PORT`: Port of your OpenVPN server (you can set 1194 as default)
+* `YOUR_OVPN_ADMIN_USER`: Login to access ovpn-admin via HTTP basic authentication
+* `YOUR_OVPN_ADMIN_PORT`: Port to access ovpn-admin (you can set 80 as default)
+* `YOUR_OVPN_ADMIN_PASSWORD_HASH`: Well, it's a bit complicated, but you need to choose a password and create an `apr1` hash for it. You can do it via command `openssl passwd -apr1 YOUR_PASSWORD` and you'll get string like that: `$apr1$fvM4f1vt$kQoXBas63UsUEJt4MaItS1`, then please double all `$` signs to avoid variable rendering, and you'll have something like `$$apr1$$fvM4f1vt$$kQoXBas63UsUEJt4MaItS1`
+
 Requirements:
 You need [Docker](https://docs.docker.com/get-docker/) and [docker-compose](https://docs.docker.com/compose/install/) installed.
 
@@ -42,33 +50,6 @@ git clone https://github.com/flant/ovpn-admin.git
 cd ovpn-admin
 ./start.sh
 ```
-#### 1.1
-Ready docker images available on [Docker Hub](https://hub.docker.com/r/flant/ovpn-admin/tags) 
-. Tags are simple: `$VERSION` or `latest` for ovpn-admin and `openvpn-$VERSION` or `openvpn-latest` for openvpn-server
-
-### 2. Building from source
-
-Requirements. You need Linux with the following components installed:
-- [golang](https://golang.org/doc/install)
-- [packr2](https://github.com/gobuffalo/packr#installation)
-- [nodejs/npm](https://nodejs.org/en/download/package-manager/)
-
-Commands to execute:
-
-```bash
-git clone https://github.com/flant/ovpn-admin.git
-cd ovpn-admin
-./bootstrap.sh
-./build.sh
-./ovpn-admin 
-```
-
-(Please don't forget to configure all needed params in advance.)
-
-### 3. Prebuilt binary
-
-You can also download and use prebuilt binaries from the [releases](https://github.com/flant/ovpn-admin/releases/latest) page — just choose a relevant tar.gz file.
-
 
 ## Notes
 * this tool uses external calls for `bash`, `coreutils` and `easy-rsa`, thus **Linux systems only are supported** at the moment.
