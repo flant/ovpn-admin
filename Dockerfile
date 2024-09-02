@@ -2,7 +2,7 @@ FROM node:16-alpine3.15 AS frontend-builder
 COPY frontend/ /app
 RUN apk add --update python3 make g++ && cd /app && npm install && npm run build
 
-FROM golang:1.17.3-buster AS backend-builder
+FROM golang:1.20.5-buster@sha256:eb3f9ac805435c1b2c965d63ce460988e1000058e1f67881324746362baf9572 AS backend-builder
 RUN go install github.com/gobuffalo/packr/v2/packr2@latest
 COPY --from=frontend-builder /app/static /app/frontend/static
 COPY . /app
