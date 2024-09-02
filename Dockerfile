@@ -1,4 +1,4 @@
-FROM node:16-alpine3.15 AS frontend-builder
+FROM node:18-alpine3.15@sha256:cd3a7004267e419477bbfc50e0502df8607a0b9b4465092f6e2c2ce4092faa45 AS frontend-builder
 COPY frontend/ /app
 RUN apk add --update python3 make g++ && cd /app && npm install && npm run build
 
