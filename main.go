@@ -34,7 +34,7 @@ import (
 )
 
 const (
-	usernameRegexp       = `^([a-zA-Z0-9_.-@])+$`
+	usernameRegexp       = `^([a-zA-Z0-9_.\-@])+$`
 	passwordMinLength    = 6
 	certsArchiveFileName = "certs.tar.gz"
 	ccdArchiveFileName   = "ccd.tar.gz"
